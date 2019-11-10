@@ -1,0 +1,285 @@
+<!-- Input Node -->
+<script type="text/javascript">
+    RED.nodes.registerType('face-api-input',{
+        category: 'face-api',
+        color: '#a6bbcf',
+        inputs:1,
+        outputs:1,
+        icon: "file.png",
+        defaults: {
+            name: {value:"face-api-input", required:true},
+            computeNode: {value:null, type:"face-api-compute"},
+        },
+        label: function() {
+            return this.name || "face-api-input"
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="face-api-input">
+    <div class="form-row">
+        <label for="node-input-computeNode"><i class="icon-tag"></i> Compute</label>
+        <input id="node-input-computeNode">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    
+</script>
+
+<script type="text/x-red" data-help-name="face-api-input">
+    <h3>Overview</h3>
+    <p>
+        Use this input node to pass image data to a central compute node.
+    </p> 
+
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">Buffer</span> </dt>
+        <dd> The payload must be set to a binary buffer of an image to be accepted</dd>
+    </dl>
+
+    <h3>Options</h3>
+    <dl class="message-properties">
+        <dt>Compute <span class="property-type">Node</span> </dt>
+        <dd> Select or create a Compute Node which the input is linked to </dd>
+
+        <dt>Name <span class="property-type">Dropdown</span> </dt>
+        <dd> The Name of the Node </dd>
+    </dl>
+
+    <h3>Details</h3>
+    <p>
+        This node acts as a proxy to pass images to its selected <code>Compute Node</code>. 
+        The image needs to be a binary buffer for the node to pass it to the compute node.
+    </p> 
+        
+    <h3>References</h3>
+    <ul>
+        <li><a href="https://github.com/justadudewhohacks/face-api.js">face-api.js</a> - Visit for more info on face-api.js</li>
+        <li><a href="">GitHub</a> - the nodes github repository</li>
+    </ul>
+</script>
+
+<!-- Compute Node -->
+<script type="text/javascript">
+    RED.nodes.registerType('face-api-compute', {
+        category: 'config',
+        icon: "file.png",
+        defaults: {
+            name : {value:"face-api-compute", required:true},
+            childHost : {value:true, required:true},
+            recognitionType : {value:"SSD", required:true},
+            multipleFaces : {value:"Multiple Faces", required:true},
+            confidence : {value:50},
+            inputSize : {value:416},
+            landmarks : {value:false, required:true},
+            expressions : {value:false, required:true},
+            ageGender : {value:false, required:true},
+            recognition : {value:false},
+            labelName : {value:"known"},
+            file : {value:""}
+        },
+        label: function() {
+            return this.name || "face-api-compute"
+        },
+        oneditsave: function(){
+            const filesToUpload = $("#node-config-input-file").prop("files");
+
+            if (filesToUpload.length) {
+                // Get the current ID of the node
+                const link          = "faceapi/" + this.id;
+
+                // Create the data
+                let   data          = new FormData();
+                $.each(filesToUpload, function (key, value) {
+                    data.append(key, value);
+                });
+
+                $.ajax({
+                    url: link,
+                    type: 'POST',
+                    data: data,
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (data, textStatus) {
+                        
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        RED.notify("Error API: " + errorThrown, "error", false, 5000);
+                    }
+                })
+            }
+            $("#node-config-input-file").val('');
+        },
+        oneditprepare: function() {
+            const recognitionElement    = $("#node-config-input-recognition")
+            recognitionElement.on("change", function(){
+                if(recognitionElement.is(":checked")) {
+                    $(".recognitionOptions").show()
+                }
+                else {
+                    $(".recognitionOptions").hide()
+                }
+            })
+
+            const typeElement    = $("#node-config-input-recognitionType")
+            typeElement.on("change", function(){
+                if(typeElement.val() === "Yolo") {
+                    $(".yoloOptions").show()
+                }
+                else {
+                    $(".yoloOptions").hide()
+                }
+            })
+
+            $("#fileButton").on("click", function() {
+                $("#node-config-input-file").trigger("click");
+            })
+            $("#deleteButton").on("click", function() {
+                // Need to delete files here
+            })
+
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="face-api-compute">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-bookmark"></i>Node Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Name of this node">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-recognitionType"><i class="icon-tag"></i> Type</label>
+        <select type="text" id="node-config-input-recognitionType" style="position: relative; width: 70%;">
+            <option selected="selected">SSD</option>
+            <option>Yolo</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-multipleFaces"><i class="icon-tag"></i> Detections</label>
+        <select type="text" id="node-config-input-multipleFaces" style="position: relative; width: 70%;">
+            <option>Single Face</option>
+            <option selected="selected">Multiple Faces</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-confidence"><i class="icon-bookmark"></i> Confidence</label>
+        <input type="number" max="100" min="0" id="node-config-input-confidence" placeholder=50>
+    </div>
+    <div class="form-row yoloOptions" hidden>
+        <label for="node-config-input-inputSize"><i class="icon-bookmark"></i> Input Size</label>
+        <select type="number" id="node-config-input-inputSize" style="position: relative; width: 70%;">
+            <option>128</option>
+            <option>160</option>
+            <option>128</option>
+            <option>224</option>
+            <option>320</option>
+            <option selected="selected">416</option>
+            <option>512</option>
+            <option>608</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" checked id="node-config-input-childHost" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-childHost" style="width: 70%;"><span> Create <b>child</b> process</span></label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-config-input-landmarks" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-landmarks" style="width: 70%;"><span> Add <b>Facial Landmarks</b> to each face</span></label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-config-input-expressions" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-expressions" style="width: 70%;"><span>Predict <b>Facial Expressions</b> for each face</span></label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-config-input-ageGender" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-ageGender" style="width: 70%;"><span>Prdeict <b>Age and Gender</b> for each face</span></label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-config-input-recognition" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-recognition" style="width: 70%;"><span> <b>Recognise</b> a face in image</span></label>
+    </div>
+    <div class="form-row recognitionOptions" hidden>
+        <label for="node-config-input-labelName"><i class="icon-bookmark"></i> Face Name</label>
+        <input type="text" id="node-config-input-labelName" placeholder="Name of the descriptor for this node">
+    </div>
+    <div class="form-row recognitionOptions" hidden>
+        <label for="node-config-input-file"><i class="icon-bookmark"></i> Descriptor</label>
+        <input type="file" accept="image/*" id="node-config-input-file" style="position:absolute; top:-100px">
+
+        <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
+            <div class="btn-group">
+                <a id="fileButton" class="editor-button"><b>Add Image</b></a>
+                <!-- <a id="deleteButton" class="editor-button">Remove Image</a> -->
+            </div>
+        </div>
+    </div>
+
+</script>
+
+<script type="text/x-red" data-help-name="face-api-compute">
+    <h3>Overview</h3>
+    <p>
+        Computes the desired facial recognition outputs as defined from the face-api.js API.
+    </p> 
+
+    <h3>Options</h3>
+    <dl class="message-properties">
+        <dt>Node Name <span class="property-type">String</span> </dt>
+        <dd> The name of the node instance </dd>
+
+        <dt>Type <span class="property-type">Dropdown</span> </dt>
+        <dd> The type of algorithm to use (SSD or Yolo) </dd>
+
+        <dt>Detections <span class="property-type">Dropdown</span> </dt>
+        <dd> Weather to find one or multiple faces </dd>
+
+        <dt class="optional">Confidence <span class="property-type">Number</span></dt>
+        <dd> The minimum confidence value to accept as a face. Defaults to 50%</dd>
+
+        <dt class="optional">Input Size <span class="property-type">Dropdown</span></dt>
+        <dd> The input size of the Yolo algorithm. Defaults to 416</dd>
+
+        <dt>Child Process <span class="property-type">Check Box</span></dt>
+        <dd> Runs the calculations in a child process to unblock the main thread. Defaults to true</dd>
+
+        <dt class="optional">Facial Landmarks <span class="property-type">Check Box</span></dt>
+        <dd> Check this to add facial landmarks to the calculation of each face</dd>
+        
+        <dt class="optional">Facial Expressions <span class="property-type">Check Box</span></dt>
+        <dd> Check this to add facial expressions to the calculation of each face</dd>
+
+        <dt class="optional">Age and Gender <span class="property-type">Check Box</span></dt>
+        <dd> Check this to calculate the age and gender of each face</dd>
+
+        <dt class="optional">Recognise <span class="property-type">Check Box</span></dt>
+        <dd> Check this to calculate the distance between the input and stored descriptor. Must have chosen a image to create a descriptor first</dd>
+
+        <dt class="optional">Face Name <span class="property-type">String</span></dt>
+        <dd> The name given to the face the node is trying to recognise. (defaults to "known")</dd>
+    </dl>
+
+    <h3>Details</h3>
+    <p>
+        To use the facial recognition, please select an image using the <code>Add Image</code> button after 
+        checking the recognise box. After selection the image will be processed into a descriptor 
+        for this node. Please use the Face Name input to name the descriptor. If an image has not 
+        been selected, the node will not compare the input for recognition and throw a warning. 
+        Currently only one descriptor is supported.
+    </p> 
+        
+    <h3>References</h3>
+    <ul>
+        <li><a href="https://github.com/justadudewhohacks/face-api.js">face-api.js</a> - Visit for more info on face-api.js</li>
+        <li><a href="https://github.com/thebigpotatoe/node-red-contrib-face-api">GitHub</a> - the nodes github repository</li>
+    </ul>
+
+</script>
