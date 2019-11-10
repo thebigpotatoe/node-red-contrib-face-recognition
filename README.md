@@ -36,7 +36,7 @@ This module comes with two nodes; the `face-api-input` node and `face-api-comput
 
 #### Input node
 
-![Input Node](Images/face-api-input-node-menu.jpg)
+![Input Node](Images/face-api-input-node-menu.JPG)
 
 The `face-api-input` node acts as a pipeline between a flow and a selected compute node. A compute node must be created and selected for the input node to work. By using a config node based approach, multiple input nodes can share the same resources on your device allowing for a smaller memory footprint of the module.
 
@@ -44,7 +44,7 @@ By design, if a node is computing and another image is sent to that node, it wil
 
 #### Compute Node
 
-![Input Node](Images/face-api-compute-node-menu.jpg)
+![Input Node](Images/face-api-compute-node-menu.JPG)
 
 The `face-api-compute` node is where all the options are set and calculations done. There are numerous options, so as a brief outline these are;
 
