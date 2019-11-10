@@ -1,8 +1,12 @@
 {
     "name": "node-red-contrib-face-recognition",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "A wrapper node for the epic face-api.js library",
     "main": "index.js",
+    "keywords": [
+        "node-red",
+        "face-api.js"
+    ],
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
     },
