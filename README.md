@@ -1,4 +1,4 @@
-# node-red-contrib-face-api
+# node-red-contrib-face-recognition
 
 This node aims to wrap the epic [Face-API.js library](https://github.com/justadudewhohacks/face-api.js) from [justadudewhohacks](https://github.com/justadudewhohacks) into a simple to import and use node in Node-Red. If you like anything in this repo be sure to also check out the original.
 
@@ -18,9 +18,9 @@ This module also utilises the `child_process` module of Node.js to offload the c
 
 From your .node-red directory, you can run;
 
-`npm install node-red-contrib-face-api`
+`npm install node-red-contrib-face-recognition`
 
-or you can go to the pallette manager in Node-Red and find `node-red-contrib-face-api` in the install tab.
+or you can go to the pallette manager in Node-Red and find `node-red-contrib-face-recognition` in the install tab.
 
 ## TensorFlow for Node.js (Optional)
 

@@ -1,5 +1,5 @@
 {
-    "name": "node-red-contrib-face-api",
+    "name": "node-red-contrib-face-recognition",
     "version": "1.0.0",
     "description": "A wrapper node for the epic face-api.js library",
     "main": "index.js",
@@ -8,14 +8,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/thebigpotatoe/node-red-contrib-face-api.git"
+        "url": "git+https://github.com/thebigpotatoe/node-red-contrib-face-recognition.git"
     },
     "author": "thebigpotatoe",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/thebigpotatoe/node-red-contrib-face-api/issues"
+        "url": "https://github.com/thebigpotatoe/node-red-contrib-face-recognition/issues"
     },
-    "homepage": "https://github.com/thebigpotatoe/node-red-contrib-face-api#readme",
+    "homepage": "https://github.com/thebigpotatoe/node-red-contrib-face-recognition#readme",
     "dependencies": {
         "canvas": "^2.6.0",
         "face-api.js": "^0.21.0",
