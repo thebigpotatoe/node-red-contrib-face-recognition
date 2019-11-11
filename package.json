@@ -1,6 +1,6 @@
 {
     "name": "node-red-contrib-face-recognition",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "A wrapper node for the epic face-api.js library",
     "main": "index.js",
     "keywords": [
