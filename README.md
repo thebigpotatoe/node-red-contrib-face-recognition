@@ -22,6 +22,15 @@ From your .node-red directory, you can run;
 
 or you can go to the pallette manager in Node-Red and find `node-red-contrib-face-recognition` in the install tab.
 
+## Example Flow
+
+As an example on how to use the node, below is a flow that grabs an image from the internet and runs inference over it. Simply copy and paste it into Node-Red to use. 
+
+![Example](Images/Example%20Flow.PNG)
+
+```
+[{"id":"ed949d24.97f4c","type":"inject","z":"424a261a.4eda88","name":"Input","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":"","x":110,"y":60,"wires":[["e376be80.b379f"]]},{"id":"501d1e3.793b7e","type":"image","z":"424a261a.4eda88","name":"Labeled Image","width":"640","x":800,"y":160,"wires":[]},{"id":"7ce5390a.03bc08","type":"image","z":"424a261a.4eda88","name":"Input Image","width":"640","x":130,"y":160,"wires":[]},{"id":"375d57b5.151938","type":"face-api-input","z":"424a261a.4eda88","name":"Get Faces","computeNode":"3f3d4565.37158a","x":450,"y":60,"wires":[["4a966d4f.e31e04","5db5c07f.d2f2e"]]},{"id":"4a966d4f.e31e04","type":"change","z":"424a261a.4eda88","name":"Set Payload to Image","rules":[{"t":"set","p":"payload","pt":"msg","to":"image","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":820,"y":120,"wires":[["501d1e3.793b7e"]]},{"id":"5db5c07f.d2f2e","type":"debug","z":"424a261a.4eda88","name":"Debug","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":770,"y":60,"wires":[]},{"id":"e376be80.b379f","type":"http request","z":"424a261a.4eda88","name":"Get Image","method":"GET","ret":"bin","paytoqs":false,"url":"https://thumbor.forbes.com/thumbor/960x0/https%3A%2F%2Fblogs-images.forbes.com%2Fmaddieberg%2Ffiles%2F2017%2F09%2Fbigbangtheorytv_s05e01_05-_h_2017.jpg","tls":"","proxy":"","authType":"basic","x":270,"y":60,"wires":[["375d57b5.151938","5aa0d77d.5108e8"]]},{"id":"5aa0d77d.5108e8","type":"base64","z":"424a261a.4eda88","name":"","action":"","property":"payload","x":120,"y":120,"wires":[["7ce5390a.03bc08"]]},{"id":"3f3d4565.37158a","type":"face-api-compute","z":"","name":"TBB Faces","childHost":true,"recognitionType":"SSD","multipleFaces":"Multiple Faces","confidence":"0","inputSize":"416","landmarks":true,"expressions":true,"ageGender":true,"recognition":false,"labelName":"Mitch","file":""}]
+```
 ## TensorFlow for Node.js (Optional)
 
 You can also optionally install TensorFlow for Node.js to make this package run faster. If you do not, the node will still run albeit much slower. To install TensorFlow navigate to your `.node-red` folder and run the following command. This will install TensorFlow in your Node-Red directory for use by the node.
@@ -30,7 +39,7 @@ You can also optionally install TensorFlow for Node.js to make this package run 
 
 >It should be noted that there are issues with the installation of tfjs-node on windows and other machines due to unsupported versions of face-api.js. Please keep up to date on the face-api.js GitHib page for any errors relating to this.
 
-## Options
+## Included Nodes
 
 This module comes with two nodes; the `face-api-input` node and `face-api-compute` node.
 
