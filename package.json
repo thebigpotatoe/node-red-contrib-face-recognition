@@ -1,6 +1,6 @@
 {
     "name": "node-red-contrib-face-recognition",
-    "version": "1.0.5",
+    "version": "1.1.0",
     "description": "A wrapper node for the epic face-api.js library",
     "main": "index.js",
     "keywords": [
@@ -24,9 +24,9 @@
         "canvas": "^2.6.0",
         "face-api.js": "^0.21.0",
         "formidable": "^1.2.1",
-        "manhattan" : "1.0.0",
-        "euclidean" : "0.0.0",
-        "chebyshev" : "0.2.1"
+        "manhattan": "1.0.0",
+        "euclidean": "0.0.0",
+        "chebyshev": "0.2.1"
     },
     "directories": {
         "weights": "weights"
