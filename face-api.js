@@ -157,7 +157,7 @@ module.exports = function (RED) {
         node.labelledDescriptors    = null;
         node.msgCallback            = null
         
-        // Start the child node if require or kill it
+        // Start the child node if required or kill it
         if (node.childHost) {     
             node.childProcess = require('child_process').fork(`${__dirname}/face-api-cmd.js`)
             node.childProcess.on('message', (msg) => {
@@ -206,7 +206,7 @@ module.exports = function (RED) {
                             floatDescriptor.push(new Float32Array(array))
                         })
 
-                        // Create a new descriptor for the node 
+                        // Create a new descriptor for the node
                         node.descriptors = new faceapi.LabeledFaceDescriptors(nameDescriptor, floatDescriptor)
 
                         // Debug 
@@ -622,6 +622,7 @@ module.exports = function (RED) {
     }
     RED.nodes.registerType("face-api-compute", faceApiComputeNode);
 
+    // HTTP Endpoints for use with the front end
     RED.httpAdmin.post('/faceapi/:id', RED.auth.needsPermission('face-api-compute.upload'), function(req,res) {
         // Get the important stuff
         var node = RED.nodes.getNode(req.params.id);

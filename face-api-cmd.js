@@ -205,14 +205,14 @@ process.on('message', async function(msg) {
 						const descriptor = new faceapi.LabeledFaceDescriptors(nameDescriptor, floatDescriptor)
 						const faceMatcher = new faceapi.FaceMatcher(descriptor)
 
-						// Check if one or multiple faces requre matching
+						// Check if one or multiple faces require matching
 						detections.forEach(face => {
 							face.bestMatch = faceMatcher.findBestMatch(face.descriptor)
 						})
 					}
 					else if (node.recognition && !node.descriptors) {
 						// Log error
-						const errorMsg = "Face-api.js [" + node.name + "] - Detections are selected but there was no descriptor to compare against, please select an image to create a descriptor."
+						const errorMsg = "Face-api.js [" + node.name + "] - Recognition is selected but there was no descriptor to compare against, please select an image to create a descriptor."
 						process.send( {"error" : errorMsg} )
 					}
 
