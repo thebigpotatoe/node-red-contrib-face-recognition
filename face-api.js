@@ -193,11 +193,15 @@ module.exports = function (RED) {
                     // Get the contents
                     const fileContents = JSON.parse(fs.readFileSync(fileName, "UTF8"))
 
-                    if ("data" in fileContents) {
+                    if (fileContents && typeof fileContents === 'object' && fileContents.constructor === Array) {
                         RED.log.info("[Face-api.js : " + node.id + "] - Creating descriptor from file for \"" + node.name + "\"")
-                        await node.createDescriptor(Buffer.from(fileContents.data))
+                        imageBuffers = []
+                        fileContents.forEach((image) => {
+                            imageBuffers.push(Buffer.from(image.data))
+                        })
+                        await node.createDescriptor(imageBuffers)
                     }
-                    else if ("label" in fileContents) {
+                    else if (fileContents && typeof fileContents === 'object' && fileContents.constructor === Object && "label" in fileContents) {
                         let nameDescriptor      = node.labelName || fileContents.label || "known"
                         let floatDescriptor     = []
 
@@ -225,26 +229,44 @@ module.exports = function (RED) {
             }
         }
 
-        node.createDescriptor = async function (inputBuffer) {
+        node.createDescriptor = async function (inputBuffers) {
             if (faceApiModelsLoaded) {
-                try {
-                    // Debug
-                    // RED.log.info("[Face-api.js : " + node.id + "] - Computing descriptor for \"" + node.name + "\"")
+                // Get  a descriptor for each input 
+                new Promise((resolve, reject) => {
+                    var results = []
+                    inputBuffers.forEach(async function (inputBuffer, index, array) {
+                        try {
+                            // Turn the image into a Canvas
+                            const img   = new Image
+                            img.src     = inputBuffer
 
-                    // Turn the image into a Canvas
-                    const img   = new Image
-                    img.src     = inputBuffer
+                            // Make a forward pass of each network for the detections
+                            const detections = await faceapi.detectSingleFace(img)
+                                .withFaceLandmarks()
+                                .withFaceDescriptor()
 
-                    // Make a forard pass of each network for the detections
-                    const detections = await faceapi.detectSingleFace(img)
-                        .withFaceLandmarks()
-                        .withFaceDescriptor()
+                            if (detections) results.push(detections.descriptor)
+                            else {
+                                // Log error
+                                const errorMsg = "[Face-api.js : " + node.id + "] - No faces detected in given descriptor image for \"" + node.name + "\""
+                                RED.log.warn(errorMsg)
+                            }
 
-                    // Get a descriptor for each face
-                    if (detections) {
+                            if (index === array.length -1) resolve(results);
+                        }
+                        catch (error) {
+                            // Log error
+                            const errorMsg = "[Face-api.js : " + node.id + "] - Could not create a descriptor for \"" + node.name + ": \n" + error
+                            RED.log.warn(errorMsg)
+                            reject(errorMsg)
+                        }
+                    })
+                }).then((descriptors) => {
+                    if (Array.isArray(descriptors) && descriptors.length) {
+                        // Get a descriptor for each face
                         node.descriptors = new faceapi.LabeledFaceDescriptors(
                             node.labelName,
-                            [detections.descriptor]
+                            descriptors
                         )
 
                         // Write the face descriptor for the specific node to disk
@@ -258,15 +280,30 @@ module.exports = function (RED) {
                     }
                     else {
                         // Log error
-                        const errorMsg = "[Face-api.js : " + node.id + "] - No faces detected in given descriptor image for \"" + node.name + "\""
+                        const errorMsg = "[Face-api.js : " + node.id + "] - No faces detected in uploaded images for \"" + node.name + "\""
                         RED.log.warn(errorMsg)
                     }
+                })
+            }
+        }
+
+        node.deleteDescriptor = async function () {
+            try {
+                // Delete the descriptor file 
+                const fileName = `${__dirname}/descriptors/` + node.id + ".json"
+                if (fs.existsSync(fileName)) { 
+                    fs.unlinkSync(fileName)
+                    return true
                 }
-                catch (error) {
-                    // Log error
-                    const errorMsg = "[Face-api.js : " + node.id + "] - Could not create descriptors for \"" + node.name + ": \n" + error
-                    RED.log.warn(errorMsg)
+                else {
+                    return false
                 }
+            }
+            catch (error) {
+                // Log error
+                const errorMsg = "[Face-api.js : " + node.id + "] - Could not clean up node with name \"" + node.name + ": \n" + error
+                RED.log.warn(errorMsg)
+                return false
             }
         }
 
@@ -589,18 +626,7 @@ module.exports = function (RED) {
             RED.log.info("[Face-api.js : " + node.id + "] - Clenaing up node \"" + node.name + "\"")
 
             // Delete the save file
-            try {
-                // Delete the descriptor file 
-                const fileName = `${__dirname}/descriptors/` + node.id + ".json"
-                if (fs.existsSync(fileName)) { 
-                    fs.unlinkSync(fileName)
-                }
-            }
-            catch (error) {
-                // Log error
-                const errorMsg = "[Face-api.js : " + node.id + "] - Could not clean up node with name \"" + node.name + ": \n" + error
-                RED.log.warn(errorMsg)
-            }
+            node.deleteDescriptor()
         }
 
         node.on('close', async function(removed, done) {
@@ -630,18 +656,25 @@ module.exports = function (RED) {
 
         // not ideal, shouldnt have to write to disk but is only every so often
         form.parse(req, function (err, fields, files) {
-            const fileData = fs.readFileSync(files[0].path)
             if (form.openedFiles.length > 0) {
+                // Get each of the files data and put into an array 
+                var filesArray = []
+                Object.keys(files).forEach((number) => {
+                    const fileContents = fs.readFileSync(files[number].path)
+                    filesArray.push(fileContents)
+                });
+
+                // Save the files or create a descriptor
                 if (node) {
                     // If the node exists then create a descriptor right away 
-                    node.createDescriptor(fileData)
+                    node.createDescriptor(filesArray)
                     res.status(201).send('OK').end();
                 }
                 else {
                     // If the node has not been depolyed, save the image and load it when deployed
                     const saveDir = `${__dirname}/descriptors`;
                     const fileName = saveDir + "/" + req.params.id + ".json"
-                    fs.writeFileSync(fileName, JSON.stringify(fileData))
+                    fs.writeFileSync(fileName, JSON.stringify(filesArray))
                     res.status(202).send('OK').end();
                 }
             }
@@ -649,5 +682,41 @@ module.exports = function (RED) {
                 res.status(400).send("No files sent with request").end();
             }
         });
+    });
+    RED.httpAdmin.get('/faceapi/:id/check', RED.auth.needsPermission('face-api-compute.upload'), async function(req,res) {
+        // Get the important stuff
+        var node = RED.nodes.getNode(req.params.id);
+
+        // Respond to the front end
+        if (node) {
+            const fileName = `${__dirname}/descriptors/` + node.id + ".json"
+            if (fs.existsSync(fileName)) { 
+                const fileData = JSON.parse(fs.readFileSync(fileName))
+                res.status(200).send(fileData.descriptors.length.toString()).end();
+            }
+            else {
+                res.status(200).send("0").end();
+            }
+        }
+        else {
+            res.send("No node found matching " + req.params.id).status(400).end();
+        }
+    });
+    RED.httpAdmin.get('/faceapi/:id/delete', RED.auth.needsPermission('face-api-compute.upload'), async function(req,res) {
+        // Get the important stuff
+        var node = RED.nodes.getNode(req.params.id);
+
+        // Delete the descriptors and respond to the front end
+        if (node) {
+            if (await node.deleteDescriptor()) {
+                res.status(201).send('OK').end();
+            }
+            else {
+                res.status(404).send('OK').end();
+            }
+        }
+        else {
+            res.send("No node found matching " + req.params.id).status(400).end();
+        }
     });
 }

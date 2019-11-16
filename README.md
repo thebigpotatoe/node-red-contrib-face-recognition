@@ -6,11 +6,11 @@ This node aims to wrap the epic [Face-API.js library](https://github.com/justadu
 
 Usage of this node is designed to be very easy while allowing the user to choose any number of options exposed by the original face-api.js module. These are currently;
 
-- Face detection
-- Facial Landmarks
-- Facial Expressions
-- Age and Gender Predictions
-- Facial Recognition
+- __Face detection__
+- __Facial Landmarks__
+- __Facial Expressions__
+- __Age and Gender Predictions__
+- __Facial Recognition__
 
 This module also utilises the `child_process` module of Node.js to offload the complex calculations required to a separate thread. In turn, the offloaded task will not block the main event loop and allow Node-Red to continue other tasks. This is entirely optional and up to the user to decide to allow for better management of resources on a constrained device such as the Raspberry Pi.
 
@@ -79,13 +79,15 @@ The `face-api-compute` node is where all the options are set and calculations do
 
 - __Face Name__: The name of the face trying to be recognised. This is option is only shown when the recognise option is selected. (Defaults to "known")
 
-- __Add Image__: Use this button to add an image to create a descriptor from. This descriptor will then be used in the compute node to predict against an input. This is option is only shown when the recognise option is selected.
+- __Add Image__: Use this button to add an image to create a descriptors from. These descriptors will then be used in the compute node to predict against an input. This is option is only shown when the recognise option is selected.
 
 #### Adding a face descriptor
 
-In order to use the facial recognition option, a facial descriptor must be calculated first to allow a comparison between it and any input image. To do this, `enable recognition`, then click `Add Image`. Once an image has been selected it will be computed either on the next deploy if your node is new, or immediately if your node already exists.
+In order to use the facial recognition option, facial descriptors must be calculated first to allow a comparison between them and any input image. To do this, check `enable recognition`, then click `Add Images`. Once selected all images will be computed either on the next deploy if your node is new, or immediately if your node already exists.
 
-This descriptor is then saved to disk allowing it to survive restarts of Node-Red. This saved file will then be loaded on startup of Node-Red. Saving the descriptor is also safer than saving an image if your Node-Red instance is online as no data about the original image is stored.
+Currently the node will compute the face descriptor in the main node-red thread. Due to this, the deploy action will be blocking until finished. This was by design so that the descriptors would be computed before using the compute node they are associated with. This may take some time if not using `tensorflow for nodejs`, so please be patient on deploys for large sets of images.
+
+These descriptors are then saved to disk allowing it to survive restarts of Node-Red. A saved file will then be loaded on startup of Node-Red. Saving the descriptor is also safer than saving an image if your Node-Red instance is online as no data about the original image is stored.
 
 #### Using the Child_Process
 

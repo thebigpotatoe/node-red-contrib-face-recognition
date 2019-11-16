@@ -115,16 +115,10 @@
             $("#node-config-input-file").val('');
         },
         oneditprepare: function() {
-            const recognitionElement    = $("#node-config-input-recognition")
-            recognitionElement.on("change", function(){
-                if(recognitionElement.is(":checked")) {
-                    $(".recognitionOptions").show()
-                }
-                else {
-                    $(".recognitionOptions").hide()
-                }
-            })
-
+            // Get the Id of the node for functions to use
+            const thisId = this.id
+            
+            // Set the handler for Type visibility
             const typeElement    = $("#node-config-input-recognitionType")
             typeElement.on("change", function(){
                 if(typeElement.val() === "Yolo") {
@@ -135,13 +129,61 @@
                 }
             })
 
+            // Set the handler for recognition visibility
+            const recognitionElement    = $("#node-config-input-recognition")
+            recognitionElement.on("change", function(){
+                if(recognitionElement.is(":checked")) {
+                    $(".recognitionOptions").show()
+                }
+                else {
+                    $(".recognitionOptions").hide()
+                }
+            })
+
+            // Set up the button callbacks for when clicked
+            $("#node-config-input-file").on("change", function() {
+                if ($("#node-config-input-file").prop("files").length) {
+                    $("#recognitionStatus").html("<b>Files added.</b> Click \"Update\" to upload. This make take a while so please be patient")
+                }
+            })
             $("#fileButton").on("click", function() {
+                $("#recognitionStatus").html("<b>Please select one or more valid images</b>")
                 $("#node-config-input-file").trigger("click");
             })
             $("#deleteButton").on("click", function() {
-                // Need to delete files here
+                $.ajax({
+                    url: "faceapi/" + thisId + "/delete",
+                    type: 'GET',
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (data, textStatus) {
+                        $("#recognitionStatus").html("<b>Deleted Node Descriptors</b>")
+                        RED.notify("Successfully deleted descriptor");
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        if (errorThrown === "Not Found") {
+                            RED.notify("File not found for this node", "error");
+                        }
+                        else {
+                            RED.notify("Node Red Internal Error: " + errorThrown, "error");
+                        }
+                    }
+                })
             })
 
+            // Get the status of how many descriptors are stored
+            $.get("faceapi/" + thisId + "/check", function(data){
+                if (data > 0) {
+                    $("#recognitionStatus").html("<b>" + data.toString() + "</b>" + ((data > 1) ? " descriptors exist" : " descriptor exists"))
+                }
+                else if (data == 0) {
+                    $("#recognitionStatus").html("<b>Descriptor does not exist</b>")
+                }
+                else {
+                    $("#recognitionStatus").html("<b>Unknown state of descriptor</b>")
+                }
+            });
         }
     });
 </script>
@@ -213,14 +255,18 @@
     </div>
     <div class="form-row recognitionOptions" hidden>
         <label for="node-config-input-file"><i class="icon-bookmark"></i> Descriptor</label>
-        <input type="file" accept="image/*" id="node-config-input-file" style="position:absolute; top:-100px">
+        <input type="file" multiple accept="image/*" id="node-config-input-file" style="position:absolute; top:-100px">
 
         <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
             <div class="btn-group">
-                <a id="fileButton" class="editor-button"><b>Add Image</b></a>
-                <!-- <a id="deleteButton" class="editor-button">Remove Image</a> -->
+                <a id="fileButton" class="editor-button"><b>Add Images</b></a>
+                <a id="deleteButton" class="editor-button">Remove Descriptors</a>
             </div>
         </div>
+    </div>
+    <div class="form-row recognitionOptions" hidden>
+        <label for="recognitionStatus"></label>
+        <label id="recognitionStatus" style="width: 70%;"></label>
     </div>
 
 </script>

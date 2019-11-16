@@ -208,6 +208,19 @@ process.on('message', async function(msg) {
 						// Check if one or multiple faces require matching
 						detections.forEach(face => {
 							face.bestMatch = faceMatcher.findBestMatch(face.descriptor)
+
+							// const inputDescriptor = Array.prototype.slice.call(face.descriptor)
+							// node.descriptors.descriptors.forEach((baseDescriptor) => {
+							// 	const euclideanDistance = require('euclidean')
+							// 	const output2 = euclideanDistance(baseDescriptor, inputDescriptor)
+							// 	console.log(output2)
+
+							// 	const manhattanDistance = require('manhattan')
+							// 	const output1 = manhattanDistance(baseDescriptor, inputDescriptor)
+
+							// 	const chebyshevDistance = require('chebyshev')
+							// 	const output3 = chebyshevDistance(baseDescriptor, inputDescriptor)
+							// })							
 						})
 					}
 					else if (node.recognition && !node.descriptors) {
