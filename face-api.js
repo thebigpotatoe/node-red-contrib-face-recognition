@@ -51,6 +51,16 @@ module.exports = function (RED) {
     }
     loadModels()
 
+    // Create a descriptor file path if it does not exist
+    async function checkDescriptorDir() {
+        const saveDir = `${__dirname}/descriptors`;
+        if (!fs.existsSync(saveDir)){
+            fs.mkdirSync(saveDir);
+            RED.log.info("[Face-a-pi.js] - Created descriptors directory at " + saveDir)
+        }
+    }
+    checkDescriptorDir()
+
     // Input Node constructor
     function faceApiInputNode(config) {
         // Register node with node red
