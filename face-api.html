@@ -79,6 +79,8 @@
             ageGender : {value:false, required:true},
             recognition : {value:false},
             labelName : {value:"known"},
+            recognitionMetric : {value : "Mean Squared Error"},
+            recognitionConfidence : {value : 0},
             file : {value:""}
         },
         label: function() {
@@ -250,8 +252,17 @@
         <label for="node-config-input-recognition" style="width: 70%;"><span> <b>Recognise</b> a face in image</span></label>
     </div>
     <div class="form-row recognitionOptions" hidden>
-        <label for="node-config-input-labelName" style="vertical-align: middle;"><i class="icon-bookmark"></i> Face Name</label>
-        <input type="text" id="node-config-input-labelName" placeholder="Name of the descriptor for this node">
+        <label for="node-config-input-recognitionMetric" style="vertical-align: middle;"> Recognition Metric </label>
+        <select type="text" id="node-config-input-recognitionMetric" style="position: relative; width: 70%;">
+            <option>Euclidean</option>
+            <option>Manhattan</option>
+            <option>Chebyshev</option>
+            <option selected="selected">Mean Squared Error</option>
+        </select>
+    </div>
+    <div class="form-row recognitionOptions">
+        <label for="node-config-input-recognitionConfidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Matched Confidence</label>
+        <input type="number" min="0" id="node-config-input-recognitionConfidence" placeholder=0>
     </div>
     <div class="form-row recognitionOptions" hidden>
         <label for="node-config-input-file" style="vertical-align: middle;"><i class="icon-bookmark"></i> Add Descriptor</label>
@@ -309,8 +320,12 @@
         <dt class="optional">Recognise <span class="property-type">Check Box</span></dt>
         <dd> Check this to calculate the distance between the input and stored descriptor. Must have chosen a image to create a descriptor first</dd>
 
-        <dt class="optional">Face Name <span class="property-type">String</span></dt>
-        <dd> The name given to the face the node is trying to recognise. (defaults to "known")</dd>
+        <dt class="optional">Recognition Metric <span class="property-type">Dropdown</span></dt>
+        <dd> The type of metric to compare faces for recognition. Defaults to Mean Squared Error</dd>
+
+        <dt class="optional">Matched Confidence <span class="property-type">Numeric</span></dt>
+        <dd> The cutoff value to decide if a face is recognised or not. Defaults to 0</dd>
+
     </dl>
 
     <h3>Details</h3>

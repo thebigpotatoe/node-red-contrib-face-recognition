@@ -143,6 +143,8 @@ module.exports = function (RED) {
         node.expressions            = config.expressions            || false;
         node.ageGender              = config.ageGender              || false;
         node.recognition            = config.recognition            || false;
+        node.recognitionMetric      = config.recognitionMetric      || "Mean Squared Error";
+        node.recognitionConfidence  = config.recognitionConfidence  || 0;       
         node.descriptors            = null;
         node.modelsLoaded           = false;
         node.labelledDescriptors    = null;
@@ -524,7 +526,47 @@ module.exports = function (RED) {
 
                                     // Check if one or multiple faces require matching
                                     detections.forEach(face => {
-                                        face.bestMatch = faceMatcher.findBestMatch(face.descriptor)						
+                                        let bestDistance = null;
+                                        const inputDescriptor = Array.prototype.slice.call(face.descriptor)
+
+                                        // Loop the provided descriptors to compare against the input descriptor
+                                        node.descriptors.descriptors.forEach((baseDescriptor) => {
+                                            // Create currentDistance to hold value for this iteration
+                                            let currentDistance = null;
+
+                                            // Find best match for the chosen distance metric
+                                            if (node.recognitionMetric === "Euclidean") {   // Smaller is better 
+                                                const euclideanDistance = require('euclidean')
+                                                currentDistance = Math.round(euclideanDistance(baseDescriptor, inputDescriptor)*10000)
+                                            }
+                                            else if (node.recognitionMetric === "Manhattan") {  // Smaller is better 
+                                                const manhattanDistance = require('manhattan')
+                                                currentDistance = Math.round(manhattanDistance(baseDescriptor, inputDescriptor)*1000)
+                                            }
+                                            else if (node.recognitionMetric === "Chebyshev") {  // Smaller is better 
+                                                const chebyshevDistance = require('chebyshev')
+                                                currentDistance = Math.round(chebyshevDistance(baseDescriptor, inputDescriptor)*100000)
+                                            }
+                                            else if (node.recognitionMetric === "Mean Squared Error") { // Smaller is better
+                                                let sum = 0;
+                                                for (i = 0; i < inputDescriptor.length; i += 1) {
+                                                    var error = inputDescriptor[i] - baseDescriptor[i];
+                                                    sum += error * error;
+                                                }
+                                                currentDistance = Math.round(sum / inputDescriptor.length * 1000000)
+                                            }
+                                            
+                                            // Compare to the best distance found 
+                                            if (bestDistance == null) bestDistance = currentDistance
+                                            else if (bestDistance > currentDistance) bestDistance = currentDistance
+                                        })	
+                                        
+                                        // Check if the best distance found is below the threshold
+                                        face.bestMatch = {
+                                            _distance : bestDistance,
+                                            _metric : node.recognitionMetric,
+                                            _label : (node.recognitionConfidence > bestDistance) ? node.descriptors.label : "unknown"
+                                        }
                                     })
                                 }
                                 else if (node.recognition && !node.descriptors) {
@@ -661,6 +703,7 @@ module.exports = function (RED) {
                                     const BestMatch = (node.recognition && bestMatch && descriptor) ? {
                                         "matchedLabel" : bestMatch._label,
                                         "matchedDistance" : bestMatch._distance,
+                                        "matchedMetric" : bestMatch._metric,
                                         "descriptor" : descriptor
                                     } : null
 

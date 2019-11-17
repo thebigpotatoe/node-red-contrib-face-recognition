@@ -77,7 +77,11 @@ The `face-api-compute` node is where all the options are set and calculations do
 
 - __Recognise__: Select this if you would like to try recognise each face in the output. This will require adding a descriptor by uploading an image using the supplied add image button. (Defaults to false)
 
-- __Face Name__: The name of the face trying to be recognised. This is option is only shown when the recognise option is selected. (Defaults to "known")
+- __Recognition Metric__: Select the type of recognition metric to use when comparing faces with the recognition option. This is option is only shown when the recognise option is selected.
+
+- __Matched Confidence__: This is the minimum cutoff value for recognition for each of the metrics. Keep in mind that the metrics will produce different ranges of values for recognition. This is option is only shown when the recognise option is selected.
+
+- __Add Images__: Use this button to add an image to create a descriptors from. These descriptors will then be used in the compute node to predict against an input. This is option is only shown when the recognise option is selected.
 
 - __Remove Descriptors__: Use this button to remove the currently stored descriptors. This is option is only shown when the recognise option is selected and is irreversible.
 
@@ -95,11 +99,18 @@ As stated the compute node can offload the calculations to a `child_process` to 
 
 > It should be noted that the child node does not speed up the calculation. It only unblocks the main thread
 
+#### The Recognition Metric 
+
+The original Face-api.js library only supports the Euclidean distance method of comparison between descriptors when matching faces. To extend this, this node also supports 3 more type of metrics. These are; __Manhattan__, __Chebyshev__, and __Mean Squared Error__.
+
+The outputs of these metrics from the node are all mapped roughly to the same output values of around 0 to 10000. This was to make it easier to compare the usefulness of each and allow the user to set a cutoff value within a similar range for each metric.
+
+From testing, __Mean Squared Error__ gives the highest contrasting results from known to unknown faces. If you have another metric you feel may be useful, feel free to submit a pull request or create a discussion as I can now implement it along with the others.
+
 ## Contributing
 
 If you like this node and want to contribute feel free to fork this repo and make a pull request. New features and suggestions are welcome, and there are several features I would like to implement, but lack the Javascript knowledge in Node.js. These are;
 
-- [ ] Suppressing the tfjs-node warning when starting for those who wish to use tfjs-core only
 - [ ] Convert `child_process` to a `worker_thread` for less memory usage.
 - [ ] Help on implementing tfjs-node on all platforms.
 - [ ] General code improvements and clean ups
