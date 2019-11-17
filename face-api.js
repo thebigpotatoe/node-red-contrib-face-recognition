@@ -735,6 +735,7 @@ module.exports = function (RED) {
             done()
         })
         
+        // Start the node by loading the descriptor
         node.loadDescriptor();
     }
     RED.nodes.registerType("face-api-compute", faceApiComputeNode);
