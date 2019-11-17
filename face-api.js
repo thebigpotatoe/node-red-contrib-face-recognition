@@ -66,7 +66,6 @@ module.exports = function (RED) {
         // Register node with node red
         RED.nodes.createNode(this, config);
         var node = this;
-        node.isComputing = false
 
         // Set the initial status of the node
         this.status({fill:"green",shape:"dot",text:"ready"});
@@ -80,9 +79,7 @@ module.exports = function (RED) {
             this.status({fill:"blue",shape:"dot",text:"computing"});
 
             // Check if node is already busy
-            if (!node.isComputing) {
-                // Set computing boolean to true
-                node.isComputing = true;
+            if (!this.computeNode.isComputing) {
                 // Check if compute node is selected
                 if (this.computeNode) {
                     // Check Payload Exists 
@@ -90,54 +87,38 @@ module.exports = function (RED) {
                         // Check if Payload was a buffer
                         if (Buffer.isBuffer(msg.payload)) {
                             // Create the callback for a new msg from the compute node
-                            this.computeNode.msgCallback = (output) => {
+                            await this.computeNode.compute(msg.payload, (output) => {
                                 // Check if error 
-                                if ("error" in output) {
+                                if ("error" in output || "warn" in output) {
                                     // Set the status to error
                                     this.status({fill:"red",shape:"dot",text:"Error in compute node"});
+                                }
+                                else if ("info" in output) {
+                                    // ignore message with info 
                                 }
                                 else {
                                     // Set Status back to ready
                                     this.status({fill:"green",shape:"dot",text:"ready"});
 
                                     // Send the message
-                                    send = send || function() { 
-                                        node.send.apply(node,arguments); 
-                                    };
+                                    send = send || function() { node.send.apply(node,arguments); };
                                     send(output);
                                 }
-
-                                // Always reset the boolean 
-                                node.isComputing = false;
-                            };
-                            
-                            // Choose which process to use given user input
-                            if (this.computeNode.childHost && this.computeNode.childProcess) {
-                                // Pass to the child process for the node
-                                this.computeNode.childProcess.send({"node" : this.computeNode, "image": msg.payload });   
-                            }
-                            else {
-                                // Pass image to the compute node's compute function
-                                const output = await this.computeNode.compute(msg.payload);
-                                this.computeNode.msgCallback(output)
-                            }
+                            });
                         }
                         else {
                             this.status({fill:"red",shape:"dot",text:"msg.payload was not a buffer"});
                             RED.log.warn("[Face-api.js] - msg.payload was not a buffer, ignoring")
-                            node.isComputing = false;
                         }
                     }
                     else {
                         this.status({fill:"red",shape:"dot",text:"No msg.payload found"});
                         RED.log.warn("[Face-api.js] - No msg.payload found")
-                        node.isComputing = false;
                     }
                 }
                 else {
                     this.status({fill:"red",shape:"dot",text:"No compute node selected"});
                     RED.log.warn("[Face-api.js] - No compute node selected for " + this.name)
-                    node.isComputing = false;
                 }
             }
         });
@@ -165,28 +146,68 @@ module.exports = function (RED) {
         node.descriptors            = null;
         node.modelsLoaded           = false;
         node.labelledDescriptors    = null;
-        node.msgCallback            = null
+        node.msgCallback            = null;
+        node.isComputing            = false;
         
         // Start the child node if required or kill it
-        if (node.childHost) {     
-            node.childProcess = require('child_process').fork(`${__dirname}/face-api-cmd.js`)
+        if (node.childHost) {  
+            // Set up args and options for the child 
+            const args = [];  
+            const options = {stdio : "pipe"};
+
+            // Start the forked child process
+            node.childProcess = require('child_process').fork(`${__dirname}/face-api-cmd.js`, args, options)
+
+            // Create the callback to handle a message event for info and warn messages
             node.childProcess.on('message', (msg) => {
-                if ("error" in msg) {
-                    RED.log.warn("[Face-api.js : " + node.id + " : Child Node] - " + msg.error)
-                }
-                else if ("info" in msg) {
+                // Route the message appropriately 
+                if ("info" in msg) {
                     RED.log.info("[Face-api.js : " + node.id + " : Child Node] - " + msg.info)
+                }
+                else if ("warn" in msg) {
+                    RED.log.warn("[Face-api.js : " + node.id + " : Child Node] - " + msg.warn)
+                }
+                else if ("error" in msg) {
+                    RED.log.error("[Face-api.js : " + node.id + " : Child Node] - " + msg.error)
                 }
                 else {
                     msg.image = Buffer.from(msg.image)
-                    node.msgCallback(msg);
                 }
+
+                // Send messages to the callback if it has been set
+                if (node.msgCallback) {
+                    node.msgCallback(msg);
+                    // if (!("info" in msg)) node.msgCallback = null
+                }
+
+                // Set the computing boolean to false
+                node.isComputing = false;
             });
+
+            // Create a callback to handle a error events
             node.childProcess.on('error', (err, signal) => {
-                RED.log.error(msg.error)
+                RED.log.error("[Face-api.js : " + node.id + " : Child Node]:\n" + err);
+                node.isComputing = false
             });
+
+            // Create callback to handle a exit events 
             node.childProcess.on('exit', (code, signal) => {
-                RED.log.info('child process exited with' + `code ${code} and signal ${signal}`);
+                RED.log.info("[Face-api.js : " + node.id + " : Child Node] - child_process exited with " + `code ${code} and signal ${signal}`);
+                node.isComputing = false
+            });
+
+            // Create the stderr callback for errors that occur in the child node
+            node.childProcess.stderr.on('data', (data) => {
+                // Convert buffer to string 
+                try {
+                    errMsg = JSON.parse(data)
+                    RED.log.error("[Face-api.js : " + node.id + " : Child Node]:\n" + errMsg);
+                    if (node.msgCallback) node.msgCallback(msg);
+                }
+                catch (err) {
+                    const errString = data.toString()
+                    if (errString.charAt(1) !== '=') RED.log.error(errString)
+                }
             });
         }
         else if (!node.childHost && node.childProcess) {
@@ -194,7 +215,7 @@ module.exports = function (RED) {
                 node.childProcess.kill('SIGINT');
             }
         }
-        
+
         node.loadDescriptor = async function () {
             try {
                 // Check if the dir and file exist
@@ -317,317 +338,377 @@ module.exports = function (RED) {
             }
         }
 
-        node.compute = async function(inputBuffer) {
-            if (faceApiModelsLoaded) {
-                try {
-                    // Debug
-                    RED.log.info("[Face-api.js : " + node.id + "] - Computing input on node \"" + node.name + "\"")
-                    const startTime = Date.now()
-
-                    // Turn the image into a Canvas
-                    const img   = new Image
-                    img.src     = inputBuffer
-
-                    // Set up the network options
-                    let options 
-                    if (node.recognitionType === "SSD") options = new faceapi.SsdMobilenetv1Options({ minConfidence: node.confidence })
-                    else if (node.recognitionType === "Yolo") options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: node.confidence, inputSize: node.inputSize })
-
-                    // Make a forard pass of each network for the detections
-                    let  detections   = null
-                    if (node.multipleFaces === "Multiple Faces") {
-                        // Just Face detection 
-                        if (!node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options)
-                        }
-
-                        // Face detection with either landmarks, expressions, AAG, or descriptors
-                        else if (node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks()
-                        }
-                        else if (!node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceExpressions()
-                        }
-                        else if (!node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withAgeAndGender()
-                        }
-                        else if (!node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceDescriptors()
-                        }
-
-                        // Face detection with landmarks and either expressions, AAG, or descriptors
-                        else if (node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions()
-                        }
-                        else if (node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withAgeAndGender()
-                        }
-                        else if (node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceDescriptors()
-                        }
-
-                        // Face detection with landmarks and expressions with either AAG, or descriptors
-                        else if (node.landmarks && node.expressions && node.ageGender && !node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender()
-                        }
-                        else if (node.landmarks && node.expressions && !node.ageGender && node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withFaceDescriptors() 
-                        }
-
-                        // Face detection with landmarks, AAG, and descriptors, but not expressions
-                        else if (node.landmarks && !node.expressions && node.ageGender && node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withAgeAndGender().withFaceDescriptors()
-                        }
-
-                        // All possible options
-                        else if (node.landmarks && node.expressions && node.ageGender && node.recognition) {
-                            detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender().withFaceDescriptors()
-                        }
-
-                        // Else not supported
-                        else {
-                            // Log error
-                            const errorMsg = "[Face-api.js : " + node.id + "] - Selected configuration of options for compute node \"" + node.name + "\" not supported"
-                            RED.log.warn(errorMsg)
-                            return { "msg" : { "error" : errorMsg} }
-                        }
-                    }
-                    else {
-                        // Just Face detection 
-                        if (!node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options)]
-                        }
-
-                        // Face detection with either landmarks, expressions, AAG, or descriptors
-                        else if (node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks()]
-                        }
-                        else if (!node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceExpressions()]
-                        }
-                        else if (!node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withAgeAndGender()]
-                        }
-                        else if (!node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceDescriptor()]
-                        }
-
-                        // Face detection with landmarks and either expressions, AAG, or descriptors
-                        else if (node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions()]
-                        }
-                        else if (node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withAgeAndGender()]
-                        }
-                        else if (node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceDescriptor()]
-                        }
-
-                        // Face detection with landmarks and expressions with either AAG, or descriptors
-                        else if (node.landmarks && node.expressions && node.ageGender && !node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender()]
-                        }
-                        else if (node.landmarks && node.expressions && !node.ageGender && node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withFaceDescriptor()]
-                        }
-
-                        // Face detection with landmarks, AAG, and descriptors, but not expressions
-                        else if (node.landmarks && !node.expressions && node.ageGender && node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withAgeAndGender().withFaceDescriptor()]
-                        }
-
-                        // All possible options
-                        else if (node.landmarks && node.expressions && node.ageGender && node.recognition) {
-                            detections = [await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender().withFaceDescriptor()]
-                        }
-
-                        // Else not supported
-                        else {
-                            // Log error
-                            const errorMsg = "[Face-api.js : " + node.id + "] - Selected configuration of options for compute node \"" + node.name + "\" not supported"
-                            RED.log.warn(errorMsg)
-                            return { "msg" : { "error" : errorMsg} }
-                        }
-                    }
-
-                    if (detections && typeof detections === 'object' && detections.constructor === Array) {
-                        // If recognition is required, check against comparator
-                        if (node.recognition && node.descriptors) {
-                            // Create the face matcher from the desriptor 
-                            const faceMatcher = new faceapi.FaceMatcher(node.descriptors)
-
-                            // Check if one or multiple faces requre matching
-                            detections.forEach(face => {
-                                face.bestMatch = faceMatcher.findBestMatch(face.descriptor)
-                            })
-                        }
-                        else if (node.recognition && !node.descriptors) {
-                            // Log error
-                            const errorMsg = "[Face-api.js : " + node.name + "] - Detections are selected but there was no descriptor to compare against, please select an image to create a descriptor."
-                            RED.log.warn(errorMsg)
-                            return { "msg" : { "error" : errorMsg} }
-                        }
-
-                        // Draw the information on the image
-                        const drawImage = async function (img, detections) {
-                            // Draw the detection rectangle
-                            const  outImg = faceapi.createCanvasFromMedia(img)
-
-                            // Draw the main box
-                            faceapi.draw.drawDetections(outImg, detections)
-
-                            // Draw the landmarks if required
-                            if (node.landmarks) faceapi.draw.drawFaceLandmarks(outImg, detections)
-
-                            // Draw the other optional data
-                            detections.forEach(result => {
-                                // Make label for experssion
-                                const { expressions } = result
-                                let expressionMaxKey = (node.expressions && expressions) ? Object.keys(expressions).reduce(function(a, b){ 
-                                    return expressions[a] > expressions[b] ? a : b 
-                                }) : null
-                                const expressionsLabel = (node.expressions) ? [
-                                    `${ expressionMaxKey } : ${ faceapi.round(expressions[expressionMaxKey]*100, 0) }%`
-                                ] : []
-
-                                // Make label for age and gender
-                                const { age, gender, genderProbability } = result
-                                const ageGenderLabel = (node.ageGender && age && gender && genderProbability) ? [
-                                    `${ gender } : ${ faceapi.round(genderProbability*100) }%`,
-                                    `${ faceapi.round(age, 0) } years`
-                                ] : []
-
-                                // Add the face recognition confidence
-                                const { bestMatch } = result
-                                const recognitionLabel = (node.recognition && bestMatch) ? [
-                                    `${ bestMatch["_label"] } (${ faceapi.round(bestMatch["_distance"], 2) })`,
-                                ] : []
-
-                                // Draw the optional Labels for the current face
-                                if (expressionsLabel.length || ageGenderLabel.length || recognitionLabel.length) {
-                                    new faceapi.draw.DrawTextField(
-                                        [ 
-                                            ...expressionsLabel,
-                                            ...ageGenderLabel,
-                                            ...recognitionLabel
-                                        ],
-                                        result.detection.box.bottomLeft
-                                    ).draw(outImg)
-                                }
-                            })
-                            return outImg.toBuffer('image/jpeg')
-                        }
-                        const newImg = await drawImage(img, detections)
-                        
-                        // Create msg.payload from the detections object
-                        let msg = {}
-                        msg["payload"]          = []
-                        msg["image"]            = newImg
-                        msg["inferenceTime"]    = Date.now() - startTime
-                        detections.forEach(result => {
-                            // Get the info of the base detection
-                            const { detection } = result
-                            const FaceDetection = (detection) ? {
-                                "imageDims" : detection._imageDims,
-                                "score" : detection._score,
-                                "classScore" : detection._classScore,
-                                "className" : detection._className
-                            } : {
-                                "imageDims" : result._imageDims,
-                                "score" : result._score,
-                                "classScore" : result._classScore,
-                                "className" : result._className
-                            }
-
-                            // Get the landmarks
-                            const { landmarks, unshiftedLandmarks, alignedRect } = result
-                            const FacialLandmarks = (node.landmarks && landmarks && unshiftedLandmarks) ? {
-                                "landmarks" : {
-                                    "_imageDims" : landmarks._imageDims,
-                                    "_shift" : landmarks._shift,
-                                    "_positions" : landmarks._positions
-                                },
-                                "unshiftedLandmarks" : {
-                                    "_imageDims" : unshiftedLandmarks._imageDims,
-                                    "_shift" : unshiftedLandmarks._shift,
-                                    "_positions" : unshiftedLandmarks._positions
-                                },
-                                "alignedRect" : {
-                                    "_imageDims" : alignedRect._imageDims,
-                                    "_score" : alignedRect._score,
-                                    "_classScore" : alignedRect._classScore,
-                                    "_className" : alignedRect._className,
-                                    "_box" : alignedRect._box,
-                                }
-                            } : null
-
-                            // Get the expressions and calculate the max score
-                            const { expressions } = result
-                            let expressionMaxKey = (node.expressions && expressions) ? Object.keys(expressions).reduce(function(a, b){ 
-                                return expressions[a] > expressions[b] ? a : b 
-                            }) : null
-                            const FacialExpressions = (expressions) ? {
-                                    "expressionLabel" : expressionMaxKey,
-                                    "expressionScore" : expressions[expressionMaxKey],
-                                    "expressions" : {
-                                        "neutral": expressions.neutral,
-                                        "happy": expressions.happy,
-                                        "sad": expressions.sad,
-                                        "angry": expressions.angry,
-                                        "fearful": expressions.fearful,
-                                        "disgusted": expressions.disgusted,
-                                        "surprised": expressions.surprised
-                                    }
-                            } : null
-
-                            // Get the age and gender results
-                            const { age, gender, genderProbability } = result
-                            const AgeAndGender = (node.ageGender && age && gender && genderProbability) ? {
-                                "gender" : gender,
-                                "age" : age,
-                                "genderProbability" : genderProbability
-                            } : null
-
-                            // Get the Face recognition scores
-                            const { bestMatch, descriptor } = result
-                            const BestMatch = (node.recognition && bestMatch && descriptor) ? {
-                                "matchedLabel" : bestMatch._label,
-                                "matchedDistance" : bestMatch._distance,
-                                "descriptor" : descriptor
-                            } : null
-
-                            // Concat the objects to create output message
-                            msg.payload.push({
-                                ...FaceDetection,
-                                ...FacialLandmarks,
-                                ...FacialExpressions,
-                                ...AgeAndGender,
-                                ...BestMatch
-                            })
-                        })                        
-                        
-                        // Callback with the new message
-                        return msg
-                    }
-                    else {
-                        // Log error
-                        const errorMsg = "[Face-api.js : " + node.id + "] - No detections found for input"
-                        RED.log.warn(errorMsg)
-                        return { "msg" : { "error" : errorMsg} }
-                    }
+        node.compute = async function(inputBuffer, callback) {
+            const computeDebug = function (type, msg, externalCallback) {
+                const outputMsg = "[Face-api.js : " + node.id + "] - " + msg
+                if (type === "info") {
+                    RED.log.info(outputMsg)
+                    if (externalCallback) externalCallback( { "info" : msg} )
                 }
-                catch (error) {
-                    // Log error
-                    const errorMsg = "[Face-api.js : " + node.id + "] - Error computing detections: " + error
-                    RED.log.warn(errorMsg)
-                    return { "msg" : { "error" : errorMsg} }
+                else if (type === "warn") {
+                    RED.log.warn(outputMsg)
+                    if (externalCallback) externalCallback( { "warn" : msg} )
+                    node.isComputing = false;
+                }
+                else if (type === "error") {
+                    RED.log.error(outputMsg)
+                    if (externalCallback) externalCallback( { "error" : msg} )
+                    node.isComputing = false;
                 }
             }
+
+            // Check if the inputBuffer is a Buffer
+            if (!Buffer.isBuffer(inputBuffer)){
+                const errorMsg = "Input was not a Buffer"
+                computeDebug("warn", errorMsg, callback)
+                return;
+            }
+
+            // Set the compute node boolean to true 
+            node.isComputing = true;
+
+            // Pass to the child process if it exists
+            if (node.childHost && node.childProcess) {
+                // Pass to the child process for the node
+                node.childProcess.send({"node" : node, "image": inputBuffer });  
+                node.msgCallback =  callback;
+            }
             else {
-                // Log error
-                const errorMsg = "[Face-api.js : " + node.id + "] - Models not loaded: " + error
-                RED.log.warn(errorMsg)
-                return { "msg" : { "error" : errorMsg} }
+                if (faceApiModelsLoaded) {
+                    try {
+                        // Debug
+                        computeDebug("info", "Computing input on node \"" + node.name + "\"", callback)
+                        const startTime = Date.now()
+
+                        // Turn the image into a Canvas
+                        const img   = new Image;
+                        img.onload 	= async function () { 
+                            // // Set up the network options
+                            let options
+                            if (node.recognitionType === "SSD") options = new faceapi.SsdMobilenetv1Options({ minConfidence: node.confidence })
+                            else if (node.recognitionType === "Yolo") options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: node.confidence, inputSize: node.inputSize })
+
+                            // Make a forward pass of each network for the detections
+                            let  detections   = null
+                            if (node.multipleFaces === "Multiple Faces") {
+                                // Just Face detection 
+                                if (!node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options)
+                                }
+
+                                // Face detection with either landmarks, expressions, AAG, or descriptors
+                                else if (node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks()
+                                }
+                                else if (!node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceExpressions()
+                                }
+                                else if (!node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withAgeAndGender()
+                                }
+                                else if (!node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceDescriptors()
+                                }
+
+                                // Face detection with landmarks and either expressions, AAG, or descriptors
+                                else if (node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions()
+                                }
+                                else if (node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withAgeAndGender()
+                                }
+                                else if (node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceDescriptors()
+                                }
+
+                                // Face detection with landmarks and expressions with either AAG, or descriptors
+                                else if (node.landmarks && node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender()
+                                }
+                                else if (node.landmarks && node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withFaceDescriptors() 
+                                }
+
+                                // Face detection with landmarks, AAG, and descriptors, but not expressions
+                                else if (node.landmarks && !node.expressions && node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withAgeAndGender().withFaceDescriptors()
+                                }
+
+                                // All possible options
+                                else if (node.landmarks && node.expressions && node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectAllFaces(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender().withFaceDescriptors()
+                                }
+
+                                // Else not supported
+                                else {
+                                    // Log error
+                                    const errorMsg = "Selected configuration of options for compute node \"" + node.name + "\" not supported"
+                                    computeDebug("warn", errorMsg, callback)
+                                }
+                            }
+                            else {
+                                // Just Face detection 
+                                if (!node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options)
+                                }
+
+                                // Face detection with either landmarks, expressions, AAG, or descriptors
+                                else if (node.landmarks && !node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks()
+                                }
+                                else if (!node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceExpressions()
+                                }
+                                else if (!node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withAgeAndGender()
+                                }
+                                else if (!node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceDescriptor()
+                                }
+
+                                // Face detection with landmarks and either expressions, AAG, or descriptors
+                                else if (node.landmarks && node.expressions && !node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions()
+                                }
+                                else if (node.landmarks && !node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withAgeAndGender()
+                                }
+                                else if (node.landmarks && !node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceDescriptor()
+                                }
+
+                                // Face detection with landmarks and expressions with either AAG, or descriptors
+                                else if (node.landmarks && node.expressions && node.ageGender && !node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender()
+                                }
+                                else if (node.landmarks && node.expressions && !node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withFaceDescriptor()
+                                }
+
+                                // Face detection with landmarks, AAG, and descriptors, but not expressions
+                                else if (node.landmarks && !node.expressions && node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withAgeAndGender().withFaceDescriptor()
+                                }
+
+                                // All possible options
+                                else if (node.landmarks && node.expressions && node.ageGender && node.recognition) {
+                                    detections = await faceapi.detectSingleFace(img, options).withFaceLandmarks().withFaceExpressions().withAgeAndGender().withFaceDescriptor()
+                                }
+
+                                // Else not supported
+                                else {
+                                    // Log error
+                                    const errorMsg = "Selected configuration of options for compute node \"" + node.name + "\" not supported"
+                                    computeDebug("warn", errorMsg, callback)
+                                }
+
+                                if (detections === undefined) detections = []
+						        else detections = [detections]
+                            }
+
+                            // Check if there are ny detections
+                            if (detections && typeof detections === 'object' && detections.constructor === Array) {
+                                // If recognition is required, check against comparator
+                                if (node.recognition && node.descriptors) {
+                                    let nameDescriptor      = node.labelName || fileContents.label || "known"
+                                    let floatDescriptor     = []
+
+                                    // Add each descriptor to an array to add to constructor
+                                    node.descriptors.descriptors.forEach(function (array) {
+                                        floatDescriptor.push(new Float32Array(array))
+                                    })
+
+                                    // Create a new descriptor for the node 
+                                    const descriptor = new faceapi.LabeledFaceDescriptors(nameDescriptor, floatDescriptor)
+                                    const faceMatcher = new faceapi.FaceMatcher(descriptor)
+
+                                    // Check if one or multiple faces require matching
+                                    detections.forEach(face => {
+                                        face.bestMatch = faceMatcher.findBestMatch(face.descriptor)						
+                                    })
+                                }
+                                else if (node.recognition && !node.descriptors) {
+                                    // Log error
+                                    const errorMsg = "Recognition is selected but there was no descriptor to compare against, please select an image to create a descriptor."
+                                    computeDebug("warn", errorMsg, callback)
+                                }
+
+                                // Draw the information on the image
+                                const drawImage = async function (img, detections) {
+                                    // Draw the detection rectangle
+                                    const  outImg = faceapi.createCanvasFromMedia(img)
+
+                                    // Draw the main box
+                                    faceapi.draw.drawDetections(outImg, detections)
+
+                                    // Draw the landmarks if required
+                                    if (node.landmarks) faceapi.draw.drawFaceLandmarks(outImg, detections)
+
+                                    // Draw the other optional data
+                                    detections.forEach(result => {
+                                        // Make label for experssion
+                                        const { expressions } = result
+                                        let expressionMaxKey = (node.expressions && expressions) ? Object.keys(expressions).reduce(function(a, b){ 
+                                            return expressions[a] > expressions[b] ? a : b 
+                                        }) : null
+                                        const expressionsLabel = (node.expressions) ? [
+                                            `${ expressionMaxKey } : ${ faceapi.round(expressions[expressionMaxKey]*100, 0) }%`
+                                        ] : []
+                                        // console.log(expressionsLabel)
+
+                                        // Make label for age and gender
+                                        const { age, gender, genderProbability } = result
+                                        const ageGenderLabel = (node.ageGender && age && gender && genderProbability) ? [
+                                            `${ gender } : ${ faceapi.round(genderProbability*100) }%`,
+                                            `${ faceapi.round(age, 0) } years`
+                                        ] : []
+                                        // console.log(ageGenderLabel)
+
+                                        // Add the face recognition confidence
+                                        const { bestMatch } = result
+                                        const recognitionLabel = (node.recognition && bestMatch) ? [
+                                            `${ bestMatch["_label"] } (${ faceapi.round(bestMatch["_distance"], 2) })`,
+                                        ] : []
+                                        // console.log(recognitionLabel)
+
+                                        // Draw the optional Labels for the current face
+                                        if (expressionsLabel.length || ageGenderLabel.length || recognitionLabel.length) {
+                                            new faceapi.draw.DrawTextField(
+                                                [ 
+                                                    ...expressionsLabel,
+                                                    ...ageGenderLabel,
+                                                    ...recognitionLabel
+                                                ],
+                                                result.detection.box.bottomLeft
+                                            ).draw(outImg)
+                                        }
+                                    })
+                                    return outImg.toBuffer('image/jpeg')
+                                }
+                                const newImg = await drawImage(img, detections)
+                                
+                                // Create msg.payload from the detections object
+                                let msg = {}
+                                msg["payload"]          = []
+                                msg["image"]            = newImg
+                                msg["inferenceTime"]    = Date.now() - startTime
+                                detections.forEach(result => {
+                                    // Get the info of the base detection
+                                    const { detection } = result
+                                    const FaceDetection = (detection) ? {
+                                        "imageDims" : detection._imageDims,
+                                        "score" : detection._score,
+                                        "classScore" : detection._classScore,
+                                        "className" : detection._className
+                                    } : {
+                                        "imageDims" : result._imageDims,
+                                        "score" : result._score,
+                                        "classScore" : result._classScore,
+                                        "className" : result._className
+                                    }
+
+                                    // Get the landmarks
+                                    const { landmarks, unshiftedLandmarks, alignedRect } = result
+                                    const FacialLandmarks = (node.landmarks && landmarks && unshiftedLandmarks) ? {
+                                        "landmarks" : {
+                                            "_imageDims" : landmarks._imageDims,
+                                            "_shift" : landmarks._shift,
+                                            "_positions" : landmarks._positions
+                                        },
+                                        "unshiftedLandmarks" : {
+                                            "_imageDims" : unshiftedLandmarks._imageDims,
+                                            "_shift" : unshiftedLandmarks._shift,
+                                            "_positions" : unshiftedLandmarks._positions
+                                        },
+                                        "alignedRect" : {
+                                            "_imageDims" : alignedRect._imageDims,
+                                            "_score" : alignedRect._score,
+                                            "_classScore" : alignedRect._classScore,
+                                            "_className" : alignedRect._className,
+                                            "_box" : alignedRect._box,
+                                        }
+                                    } : null
+
+                                    // Get the expressions and calculate the max score
+                                    const { expressions } = result
+                                    let expressionMaxKey = (node.expressions && expressions) ? Object.keys(expressions).reduce(function(a, b){ 
+                                        return expressions[a] > expressions[b] ? a : b 
+                                    }) : null
+                                    const FacialExpressions = (expressions) ? {
+                                            "expressionLabel" : expressionMaxKey,
+                                            "expressionScore" : expressions[expressionMaxKey],
+                                            "expressions" : {
+                                                "neutral": expressions.neutral,
+                                                "happy": expressions.happy,
+                                                "sad": expressions.sad,
+                                                "angry": expressions.angry,
+                                                "fearful": expressions.fearful,
+                                                "disgusted": expressions.disgusted,
+                                                "surprised": expressions.surprised
+                                            }
+                                    } : null
+
+                                    // Get the age and gender results
+                                    const { age, gender, genderProbability } = result
+                                    const AgeAndGender = (node.ageGender && age && gender && genderProbability) ? {
+                                        "gender" : gender,
+                                        "age" : age,
+                                        "genderProbability" : genderProbability
+                                    } : null
+
+                                    // Get the Face recognition scores
+                                    const { bestMatch, descriptor } = result
+                                    const BestMatch = (node.recognition && bestMatch && descriptor) ? {
+                                        "matchedLabel" : bestMatch._label,
+                                        "matchedDistance" : bestMatch._distance,
+                                        "descriptor" : descriptor
+                                    } : null
+
+                                    // Concat the objects to create output message
+                                    msg.payload.push({
+                                        ...FaceDetection,
+                                        ...FacialLandmarks,
+                                        ...FacialExpressions,
+                                        ...AgeAndGender,
+                                        ...BestMatch
+                                    })
+                                })                        
+                                
+                                // Callback with the new message
+                                callback( msg )
+                                node.isComputing = false;
+                            }
+                            else if (detections && typeof detections === 'object' && detections.constructor === Array && detections.length == 0) {
+                                let msg = {}
+                                msg["payload"]          = []
+                                msg["image"]            = inputBuffer
+                                msg["inferenceTime"]    = Date.now() - startTime
+                                callback( msg )
+                                node.isComputing = false;
+                            }
+                            else {
+                                // Log error
+                                const errorMsg = "No detections found for input"
+                                computeDebug("warn", errorMsg, callback)
+                            }
+                        };
+                        img.onerror = err => { 
+                            const errorMsg = "Failed to load input image into Canvas";
+                            computeDebug("error", errorMsg, callback)
+                        };
+                        img.src     = inputBuffer;
+                    }
+                    catch (error) {
+                        // Log error
+                        const errorMsg = "Error computing detections: " + error
+                        computeDebug("error", errorMsg, callback)
+                    }
+                }
+                else {
+                    // Log error
+                    const errorMsg = "Models not loaded"
+                    computeDebug("warn", errorMsg, callback)
+                }
             }
         }
 
