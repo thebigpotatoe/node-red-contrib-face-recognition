@@ -190,29 +190,29 @@
 
 <script type="text/x-red" data-template-name="face-api-compute">
     <div class="form-row">
-        <label for="node-config-input-name"><i class="icon-bookmark"></i>Node Name</label>
+        <label for="node-config-input-name" style="vertical-align: middle;"><i class="icon-bookmark"></i>Node Name</label>
         <input type="text" id="node-config-input-name" placeholder="Name of this node">
     </div>
     <div class="form-row">
-        <label for="node-config-input-recognitionType"><i class="icon-tag"></i> Type</label>
+        <label for="node-config-input-recognitionType" style="vertical-align: middle;"><i class="icon-tag"></i> Detection Type</label>
         <select type="text" id="node-config-input-recognitionType" style="position: relative; width: 70%;">
             <option selected="selected">SSD</option>
             <option>Yolo</option>
         </select>
     </div>
     <div class="form-row">
-        <label for="node-config-input-multipleFaces"><i class="icon-tag"></i> Detections</label>
+        <label for="node-config-input-multipleFaces" style="vertical-align: middle;"><i class="icon-tag"></i> Faces to Detect</label>
         <select type="text" id="node-config-input-multipleFaces" style="position: relative; width: 70%;">
             <option>Single Face</option>
             <option selected="selected">Multiple Faces</option>
         </select>
     </div>
     <div class="form-row">
-        <label for="node-config-input-confidence"><i class="icon-bookmark"></i> Confidence</label>
+        <label for="node-config-input-confidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Detection Confidence</label>
         <input type="number" max="100" min="0" id="node-config-input-confidence" placeholder=50>
     </div>
     <div class="form-row yoloOptions" hidden>
-        <label for="node-config-input-inputSize"><i class="icon-bookmark"></i> Input Size</label>
+        <label for="node-config-input-inputSize" style="vertical-align: middle;"><i class="icon-bookmark"></i> Input Size</label>
         <select type="number" id="node-config-input-inputSize" style="position: relative; width: 70%;">
             <option>128</option>
             <option>160</option>
@@ -250,7 +250,7 @@
         <label for="node-config-input-recognition" style="width: 70%;"><span> <b>Recognise</b> a face in image</span></label>
     </div>
     <div class="form-row recognitionOptions" hidden>
-        <label for="node-config-input-labelName"><i class="icon-bookmark"></i> Face Name</label>
+        <label for="node-config-input-labelName" style="vertical-align: middle;"><i class="icon-bookmark"></i> Face Name</label>
         <input type="text" id="node-config-input-labelName" placeholder="Name of the descriptor for this node">
     </div>
     <div class="form-row recognitionOptions" hidden>
