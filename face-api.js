@@ -134,7 +134,7 @@ module.exports = function (RED) {
         // Node variables 
         node.name                   = config.name                   || "face-api-compute";
         node.childHost              = config.childHost              || false;
-        node.labelName              = config.labelName              || "known";
+        node.labelName              = (config.name === "face-api-compute") ? "known" : config.name;
         node.recognitionType        = config.recognitionType        || "SSD";
         node.multipleFaces          = config.multipleFaces          || "Multiple Faces";
         node.confidence             = config.confidence/100         || 0.5;
