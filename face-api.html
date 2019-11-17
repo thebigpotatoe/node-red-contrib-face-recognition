@@ -175,7 +175,7 @@
             // Get the status of how many descriptors are stored
             $.get("faceapi/" + thisId + "/check", function(data){
                 if (data > 0) {
-                    $("#recognitionStatus").html("<b>" + data.toString() + "</b>" + ((data > 1) ? " descriptors exist" : " descriptor exists"))
+                    $("#recognitionStatus").html("<b>" + data.toString() + "</b>" + ((data > 1) ? " descriptors exist for this node" : " descriptor exists for this node"))
                 }
                 else if (data == 0) {
                     $("#recognitionStatus").html("<b>Descriptor does not exist</b>")
