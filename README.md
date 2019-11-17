@@ -79,7 +79,7 @@ The `face-api-compute` node is where all the options are set and calculations do
 
 - __Face Name__: The name of the face trying to be recognised. This is option is only shown when the recognise option is selected. (Defaults to "known")
 
-- __Add Image__: Use this button to add an image to create a descriptors from. These descriptors will then be used in the compute node to predict against an input. This is option is only shown when the recognise option is selected.
+- __Remove Descriptors__: Use this button to remove the currently stored descriptors. This is option is only shown when the recognise option is selected and is irreversible.
 
 #### Adding a face descriptor
 
