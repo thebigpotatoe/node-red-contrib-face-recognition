@@ -88,7 +88,6 @@ process.on('message', async function(msg) {
 				}
 
 				// Debug
-				computeDebug("info", "Computing input on node \"" + node.name + "\"")
 				const startTime = Date.now();
 
 				// Turn the image into a Canvas

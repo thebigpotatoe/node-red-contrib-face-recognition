@@ -235,7 +235,9 @@ module.exports = function (RED) {
 
             // Create callback to handle a exit events 
             node.childProcess.on('exit', (code, signal) => {
-                RED.log.info("[Face-api.js : " + node.id + " : Child Node] - child_process exited with " + `code ${code} and signal ${signal}`);
+                const exitString = "[Face-api.js : " + node.id + " : Child Node] - child_process exited with " + `code ${code} and signal ${signal}`
+                if (signal == "SIGINT") RED.log.info(exitString)
+                else RED.log.error(exitString);
                 node.isComputing = false
             });
 
@@ -248,8 +250,27 @@ module.exports = function (RED) {
                     if (node.msgCallback) node.msgCallback(msg);
                 }
                 catch (err) {
+                    // cast the Error to a string
                     const errString = data.toString()
-                    if (errString.charAt(1) !== '=') RED.log.error(errString)
+
+                    // Create a list of known errors
+                    let ignoredErrors = [
+                        "Hi there",
+                        "cpu backend was already",
+                        "Platform node has already",
+                        "I tensorfl",
+                        "Your CPU supports instructions"
+                    ]
+
+                    // Search the incoming error string for known errors 
+                    for (i = 0; i < ignoredErrors.length; i++) {
+                        if (errString.indexOf(ignoredErrors[i]) !== -1) {
+                            return;
+                        }
+                    }   
+                    
+                    // If the error is not known print it out
+                    RED.log.error(errString)
                 }
             });
         }
@@ -399,6 +420,9 @@ module.exports = function (RED) {
                     node.isComputing = false;
                 }
             }
+            
+            // Debug
+            // computeDebug("info", "Computing input on node \"" + node.name + "\"", callback)
 
             // Check if the inputBuffer is a Buffer
             if (!Buffer.isBuffer(inputBuffer)){
@@ -419,8 +443,7 @@ module.exports = function (RED) {
             else {
                 if (faceApiModelsLoaded) {
                     try {
-                        // Debug
-                        computeDebug("info", "Computing input on node \"" + node.name + "\"", callback)
+                        // Capture time for inference debug
                         const startTime = Date.now()
 
                         // Turn the image into a Canvas
