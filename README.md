@@ -35,9 +35,14 @@ As an example on how to use the node, below is a flow that grabs an image from t
 
 You can also optionally install TensorFlow for Node.js to make this package run faster. If you do not, the node will still run albeit much slower. To install TensorFlow navigate to your `.node-red` folder and run the following command. This will install TensorFlow in your Node-Red directory for use by the node.
 
-`npm i face-api.js canvas @tensorflow/tfjs-node`
+`npm install @tensorflow/tfjs-node`
 
->It should be noted that there are issues with the installation of tfjs-node on windows and other machines due to unsupported versions of face-api.js. Please keep up to date on the face-api.js GitHib page for any errors relating to this.
+> There are known issues with the working combinations version of Node.js, @tensorflow/tfjs-node and face-api.js. At the time of writting this, on a windows environment these were found to be;
+> - Node.js: 10.16.3
+> - @tensorflow/tfjs-node: 1.2.11
+> - face-api.js: 0.21.0 
+
+> Please install these to gain the speed of the tf c++ backend and keep up to date on the face-api.js GitHib page for any errors relating to this.
 
 ## Included Nodes
 
