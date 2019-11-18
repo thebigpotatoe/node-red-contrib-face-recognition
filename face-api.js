@@ -215,6 +215,7 @@ module.exports = function (RED) {
                         "Hi there",
                         "cpu backend was already",
                         "Platform node has already",
+                        "I tensorfl",
                         "Your CPU supports instructions"
                     ]
 
@@ -377,6 +378,9 @@ module.exports = function (RED) {
                 }
             }
             
+            // Debug
+            // computeDebug("info", "Computing input on node \"" + node.name + "\"", callback)
+
             // Check if the inputBuffer is a Buffer
             if (!Buffer.isBuffer(inputBuffer)){
                 const errorMsg = "Input was not a Buffer"
