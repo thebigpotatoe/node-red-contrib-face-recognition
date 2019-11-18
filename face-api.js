@@ -376,7 +376,7 @@ module.exports = function (RED) {
                     node.isComputing = false;
                 }
             }
-
+            
             // Check if the inputBuffer is a Buffer
             if (!Buffer.isBuffer(inputBuffer)){
                 const errorMsg = "Input was not a Buffer"
@@ -396,8 +396,7 @@ module.exports = function (RED) {
             else {
                 if (faceApiModelsLoaded) {
                     try {
-                        // Debug
-                        computeDebug("info", "Computing input on node \"" + node.name + "\"", callback)
+                        // Capture time for inference debug
                         const startTime = Date.now()
 
                         // Turn the image into a Canvas
