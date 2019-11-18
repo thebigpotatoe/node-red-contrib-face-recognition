@@ -207,8 +207,26 @@ module.exports = function (RED) {
                     if (node.msgCallback) node.msgCallback(msg);
                 }
                 catch (err) {
+                    // cast the Error to a string
                     const errString = data.toString()
-                    if (errString.charAt(1) !== '=') RED.log.error(errString)
+
+                    // Create a list of known errors
+                    let ignoredErrors = [
+                        "Hi there",
+                        "cpu backend was already",
+                        "Platform node has already",
+                        "Your CPU supports instructions"
+                    ]
+
+                    // Search the incoming error string for known errors 
+                    for (i = 0; i < ignoredErrors.length; i++) {
+                        if (errString.indexOf(ignoredErrors[i]) !== -1) {
+                            return;
+                        }
+                    }   
+                    
+                    // If the error is not known print it out
+                    RED.log.error(errString)
                 }
             });
         }
