@@ -106,6 +106,8 @@ These descriptors are then saved to disk allowing it to survive restarts of Node
 
 As stated the compute node can offload the calculations to a `child_process` to allow the Node-Red event loop to continue. In doing this, another instance of Node.js is spawned which takes a certain amount of resources. Due to this it may not be desirable to run the calculations in this child node. With the option available, you can choose how to run this node for your specific application.
 
+> On a windows environment, each child process take approx 85MB of ram. This should be similar for other platforms.
+
 > It should be noted that the child node does not speed up the calculation. It only unblocks the main thread
 
 #### The Recognition Metric 
