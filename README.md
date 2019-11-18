@@ -12,7 +12,7 @@ Usage of this node is designed to be very easy while allowing the user to choose
 - __Age and Gender Predictions__
 - __Facial Recognition__
 
-This module also utilises the `child_process` module of Node.js to offload the complex calculations required to a separate thread. In turn, the offloaded task will not block the main event loop and allow Node-Red to continue other tasks. This is entirely optional and up to the user to decide to allow for better management of resources on a constrained device such as the Raspberry Pi.
+This module also utilizes the `child_process` module of Node.js to offload the complex calculations required to a separate thread. In turn, the offloaded task will not block the main event loop and allow Node-Red to continue other tasks. This is entirely optional and up to the user to decide to allow for better management of resources on a constrained device such as the Raspberry Pi.
 
 ## Installation
 
@@ -37,7 +37,7 @@ You can also optionally install TensorFlow for Node.js to make this package run 
 
 `npm install @tensorflow/tfjs-node`
 
-> There are known issues with the working combinations version of Node.js, @tensorflow/tfjs-node and face-api.js. At the time of writting this, on a windows environment these were found to be;
+> There are known issues with the working combinations version of Node.js, @tensorflow/tfjs-node and face-api.js. At the time of writing this, on a windows environment these were found to be;
 > - Node.js: 10.16.3
 > - @tensorflow/tfjs-node: 1.2.11
 > - face-api.js: 0.21.0 
@@ -52,7 +52,11 @@ This module comes with two nodes; the `face-api-input` node and `face-api-comput
 
 ![Input Node](Images/face-api-input-node-menu.JPG)
 
-The `face-api-input` node acts as a pipeline between a flow and a selected compute node. A compute node must be created and selected for the input node to work. By using a config node based approach, multiple input nodes can share the same resources on your device allowing for a smaller memory footprint of the module.
+The `face-api-input` node acts as a pipeline between a flow and the compute nodes. Multiple compute nodes can be created and at least one must be selected for the input node to work. By using a config node based approach, multiple input nodes can share the same resources on your device allowing for a smaller memory footprint of the module.
+
+The input node is capable of utilizing 10 compute nodes to process an image. The output of the input node is an array of results from each individual compute nodes containing information about found faces, the over layed image and individual inference time. 
+
+To add multiple compute nodes to the input simply click the __Add node__ button in the edit dialog. This will add an option to select another compute node from a list of already created nodes. If you have multiple nodes but do not fill in any of them, they will be ignored. Only Node 1 is required.
 
 By design, if a node is computing and another image is sent to that node, it will be ignored until the compute node has finished. This allows users to use a stream of images as an input and not worry about queued images bogging down the event loop.
 
@@ -116,6 +120,5 @@ From testing, __Mean Squared Error__ gives the highest contrasting results from 
 
 If you like this node and want to contribute feel free to fork this repo and make a pull request. New features and suggestions are welcome, and there are several features I would like to implement, but lack the Javascript knowledge in Node.js. These are;
 
-- [ ] Convert `child_process` to a `worker_thread` for less memory usage.
 - [ ] Help on implementing tfjs-node on all platforms.
 - [ ] General code improvements and clean ups
