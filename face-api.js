@@ -194,7 +194,9 @@ module.exports = function (RED) {
 
             // Create callback to handle a exit events 
             node.childProcess.on('exit', (code, signal) => {
-                RED.log.info("[Face-api.js : " + node.id + " : Child Node] - child_process exited with " + `code ${code} and signal ${signal}`);
+                const exitString = "[Face-api.js : " + node.id + " : Child Node] - child_process exited with " + `code ${code} and signal ${signal}`
+                if (signal == "SIGINT") RED.log.info(exitString)
+                else RED.log.error(exitString);
                 node.isComputing = false
             });
 
