@@ -340,7 +340,8 @@ process.on('message', async function(msg) {
 						
 						// Create msg.payload from the detections object
 						let msg = {}
-						msg["payload"]          = []
+						msg["faces"]          = []
+						msg["name"]             = node.name
 						msg["image"]            = newImg
 						msg["inferenceTime"]    = Date.now() - startTime
 						detections.forEach(result => {
@@ -417,7 +418,7 @@ process.on('message', async function(msg) {
 							} : null
 
 							// Concat the objects to create output message
-							msg.payload.push({
+							msg.faces.push({
 								...FaceDetection,
 								...FacialLandmarks,
 								...FacialExpressions,
@@ -431,7 +432,8 @@ process.on('message', async function(msg) {
 					}
 					else if (detections && typeof detections === 'object' && detections.constructor === Array && detections.length == 0) {
 						let msg = {}
-						msg["payload"]          = []
+						msg["faces"]          = []
+						msg["name"]             = node.name
 						msg["image"]            = inputBuffer
 						msg["inferenceTime"]    = Date.now() - startTime
 						process.send( msg );

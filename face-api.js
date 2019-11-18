@@ -66,6 +66,27 @@ module.exports = function (RED) {
         // Register node with node red
         RED.nodes.createNode(this, config);
         var node = this;
+        node.busy = false;
+
+        // Register all compute nodes into an array
+        let computeNodes = [];
+        let computeNodesOutput = [];
+        if (RED.nodes.getNode(config.computeNode1)) computeNodes.push(RED.nodes.getNode(config.computeNode1));
+        if (RED.nodes.getNode(config.computeNode2)) computeNodes.push(RED.nodes.getNode(config.computeNode2));
+        if (RED.nodes.getNode(config.computeNode3)) computeNodes.push(RED.nodes.getNode(config.computeNode3));
+        if (RED.nodes.getNode(config.computeNode4)) computeNodes.push(RED.nodes.getNode(config.computeNode4));
+        if (RED.nodes.getNode(config.computeNode5)) computeNodes.push(RED.nodes.getNode(config.computeNode5));
+        if (RED.nodes.getNode(config.computeNode6)) computeNodes.push(RED.nodes.getNode(config.computeNode6));
+        if (RED.nodes.getNode(config.computeNode7)) computeNodes.push(RED.nodes.getNode(config.computeNode7));
+        if (RED.nodes.getNode(config.computeNode8)) computeNodes.push(RED.nodes.getNode(config.computeNode8));
+        if (RED.nodes.getNode(config.computeNode9)) computeNodes.push(RED.nodes.getNode(config.computeNode9));
+        if (RED.nodes.getNode(config.computeNode10)) computeNodes.push(RED.nodes.getNode(config.computeNode10));
+
+        // Get the number of active nodes
+        let numActiveNodes = 0;
+        for (i = 0; i < computeNodes.length; i++) {
+            if(computeNodes[i] !== null) numActiveNodes = numActiveNodes + 1
+        }
 
         // Set the initial status of the node
         this.status({fill:"green",shape:"dot",text:"ready"});
@@ -75,52 +96,72 @@ module.exports = function (RED) {
         
         // message input handle
         node.on('input', async function (msg, send, done) {
-            // Set the status to computing
-            this.status({fill:"blue",shape:"dot",text:"computing"});
+            if (!node.busy) {
+                // Set the status to computing
+                node.busy = true;
+                this.status({fill:"blue",shape:"dot",text:"computing"});
 
-            // Check if node is already busy
-            if (!this.computeNode.isComputing) {
-                // Check if compute node is selected
-                if (this.computeNode) {
-                    // Check Payload Exists 
-                    if ("payload" in msg) {
-                        // Check if Payload was a buffer
-                        if (Buffer.isBuffer(msg.payload)) {
-                            // Create the callback for a new msg from the compute node
-                            await this.computeNode.compute(msg.payload, (output) => {
-                                // Check if error 
-                                if ("error" in output || "warn" in output) {
-                                    // Set the status to error
-                                    this.status({fill:"red",shape:"dot",text:"Error in compute node"});
-                                }
-                                else if ("info" in output) {
-                                    // ignore message with info 
-                                }
-                                else {
-                                    // Set Status back to ready
-                                    this.status({fill:"green",shape:"dot",text:"ready"});
+                // Check if at least one compute node is selected
+                if (computeNodes.every(element => element === null)) {
+                    this.status({fill:"red",shape:"dot",text:"No compute nodes selected"});
+                    RED.log.warn("[Face-api.js] - No compute nodes selected for " + this.name)
+                    return
+                }
+
+                // Check Payload Exists and is a Buffer
+                if (!("payload" in msg)) {
+                    this.status({fill:"red",shape:"dot",text:"No msg.payload found"});
+                    RED.log.warn("[Face-api.js] - No msg.payload found")
+                    return
+                }
+                else if (!Buffer.isBuffer(msg.payload)) {
+                    this.status({fill:"red",shape:"dot",text:"msg.payload was not a buffer"});
+                    RED.log.warn("[Face-api.js] - msg.payload was not a buffer, ignoring")
+                    return
+                }
+
+                // Pass the image to each compute node 
+                computeNodes.forEach((computeNode) => {
+                    // Check if compute node is not null
+                    if (computeNode !== null) {
+                        // Send the message to the node
+                        computeNode.compute(msg.payload, (output) => {
+                            // Check if error 
+                            if ("error" in output || "warn" in output) {
+                                // Set the status to error
+                                node.status({fill:"red",shape:"dot",text:"Error in compute node"});
+                            }
+                            else if ("info" in output) {
+                                // ignore message with info 
+                            }
+                            else {
+                                // Set Status back to ready
+                                node.status({fill:"green",shape:"dot",text:"ready"});
+
+                                // Add it to the compute nodes output array 
+                                computeNodesOutput.push(output)
+                                if (numActiveNodes === computeNodesOutput.length) {
+                                    // Create the message 
+                                    let msg = {}
+                                    computeNodesOutput.forEach((output) => {
+                                        msg[output.name] = output
+                                    })
 
                                     // Send the message
                                     send = send || function() { node.send.apply(node,arguments); };
-                                    send(output);
+                                    send({"payload": msg});
+
+                                    // Set the busy boolean 
+                                    node.busy = false;
+
+                                    // Reset the array
+                                    computeNodesOutput = []
                                 }
-                            });
-                        }
-                        else {
-                            this.status({fill:"red",shape:"dot",text:"msg.payload was not a buffer"});
-                            RED.log.warn("[Face-api.js] - msg.payload was not a buffer, ignoring")
-                        }
+                            }
+                        });
                     }
-                    else {
-                        this.status({fill:"red",shape:"dot",text:"No msg.payload found"});
-                        RED.log.warn("[Face-api.js] - No msg.payload found")
-                    }
-                }
-                else {
-                    this.status({fill:"red",shape:"dot",text:"No compute node selected"});
-                    RED.log.warn("[Face-api.js] - No compute node selected for " + this.name)
-                }
-            }
+                })
+            };
         });
     }
     RED.nodes.registerType("face-api-input", faceApiInputNode);
@@ -631,7 +672,8 @@ module.exports = function (RED) {
                                 
                                 // Create msg.payload from the detections object
                                 let msg = {}
-                                msg["payload"]          = []
+                                msg["faces"]          = []
+                                msg["name"]             = node.name
                                 msg["image"]            = newImg
                                 msg["inferenceTime"]    = Date.now() - startTime
                                 detections.forEach(result => {
@@ -708,7 +750,7 @@ module.exports = function (RED) {
                                     } : null
 
                                     // Concat the objects to create output message
-                                    msg.payload.push({
+                                    msg.faces.push({
                                         ...FaceDetection,
                                         ...FacialLandmarks,
                                         ...FacialExpressions,
@@ -723,7 +765,8 @@ module.exports = function (RED) {
                             }
                             else if (detections && typeof detections === 'object' && detections.constructor === Array && detections.length == 0) {
                                 let msg = {}
-                                msg["payload"]          = []
+                                msg["faces"]          = []
+                                msg["name"]             = node.name
                                 msg["image"]            = inputBuffer
                                 msg["inferenceTime"]    = Date.now() - startTime
                                 callback( msg )
