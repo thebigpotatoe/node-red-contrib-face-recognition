@@ -22,9 +22,14 @@ From your .node-red directory, you can run;
 
 or you can go to the pallette manager in Node-Red and find `node-red-contrib-face-recognition` in the install tab.
 
+> Linux users (including raspberry pi) should read [this issue](https://github.com/thebigpotatoe/node-red-contrib-face-recognition/issues/4#issuecomment-579821200) if having issues with installing canvas.
+
 ## Example Flow
 
-As an example on how to use the node, below is a flow that grabs an image from the internet and runs inference over it. Simply copy and paste it into Node-Red to use. 
+As an example on how to use the node, below is a flow that grabs an image from the internet and runs inference over it. Copy and paste it into Node-Red to use, but make sure to install the following nodes from the pallet manager;
+
+- node-red-node-base64
+- node-red-contrib-image-output
 
 ![Example](Images/Example%20Flow.PNG)
 
