@@ -143,8 +143,19 @@ module.exports = function (RED) {
                                 if (numActiveNodes === computeNodesOutput.length) {
                                     // Create the message 
                                     let msg = {}
+                                    msg["Matched Faces"] = []
+
                                     computeNodesOutput.forEach((output) => {
                                         msg[output.name] = output
+                                        output.faces.forEach(face => {
+                                            if (face.matchedLabel !== "unknown") {
+                                                msg["Matched Faces"].push({
+                                                    "name" : face.matchedLabel,
+                                                    "confidence" : face.matchedDistance
+                                                })
+                                                // console.log(face)
+                                            }
+                                        })
                                     })
 
                                     // Send the message
