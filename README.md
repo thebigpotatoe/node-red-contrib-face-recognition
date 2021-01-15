@@ -1,5 +1,11 @@
 # node-red-contrib-face-recognition
 
+## Outdated Warning
+
+This node is now becoming outdated, struggling to run across all systems with ease (also not to mention the code needs some serious work to improve). Due to this it will not be actively maintained however I will look at pull requets if they are made and might come back to this in the future. As another option which is far more portable and flexible to use even from node-red check out my [docker version of face-api.js!](https://github.com/thebigpotatoe/face-recognition-docker)
+
+## Intro
+
 This node aims to wrap the epic [Face-API.js library](https://github.com/justadudewhohacks/face-api.js) from [justadudewhohacks](https://github.com/justadudewhohacks) into a simple to import and use node in Node-Red. If you like anything in this repo be sure to also check out the original.
 
 ![bbt1](Images/bbt1.jpg)
