@@ -1,121 +1,268 @@
 <!-- Input Node -->
 <script type="text/javascript">
-    RED.nodes.registerType('face-api-input',{
+    RED.nodes.registerType('face-api-input', {
         category: 'Face Recognition',
         color: '#a6bbcf',
-        inputs:1,
-        outputs:1,
+        inputs: 1,
+        outputs: 1,
         icon: "file.png",
         defaults: {
-            name: {value:"face-api-input", required:true},
-            numNodes: {value: 1, required:true},
-            computeNode1: {value:null, type:"face-api-compute"},
-            computeNode2: {value:null, type:"face-api-compute", required:false},
-            computeNode3: {value:null, type:"face-api-compute", required:false},
-            computeNode4: {value:null, type:"face-api-compute", required:false},
-            computeNode5: {value:null, type:"face-api-compute", required:false},
-            computeNode6: {value:null, type:"face-api-compute", required:false},
-            computeNode7: {value:null, type:"face-api-compute", required:false},
-            computeNode8: {value:null, type:"face-api-compute", required:false},
-            computeNode9: {value:null, type:"face-api-compute", required:false},
-            computeNode10: {value:null, type:"face-api-compute", required:false},
+            name: { value: "face-api-input", required: true },
+            model: { value: "SSD", required: true },
+            confidence: { value: 50 },
+            input_size: { value: 416 },
+            landmarks: { value: false, required: true },
+            expressions: { value: false, required: true },
+            age_gender: { value: false, required: true },
+            descriptors: { value: false, required: true },
+            match_metric: { value: "Mean Squared Error", required: true },
+            match_confidence: { value: 0, required: true },
+            recognise_nodes: { value: [] },
+            recognise_node_editor: { value: null, type: "face-api-recognise", required: false },
         },
-        label: function() {
+        label: function () {
             return this.name || "face-api-input"
         },
-        oneditprepare : function() {
+        oneditprepare: async function () {
+            // Set the node as this for context
             let node = this
 
-            $("#addButton").on("click", function() {
-                node.numNodes = Math.min(Math.max(parseInt(node.numNodes + 1), 1), 10);
-                updateNodeList()
-            })
-            $("#deleteButton").on("click", function() {
-                node.numNodes = Math.min(Math.max(parseInt(node.numNodes - 1), 1), 10);
-                updateNodeList()
-            })
+            // Add recognise nodes as an array if not there
+            node.recognise_nodes = (node.recognise_nodes || [])
 
-            function updateNodeList () {
-                console.log(node.numNodes)
-                for (i = 1; i <= 10; i++) {
-                    if (i <= node.numNodes) {
-                        $("#Node" + i).show()
-                    }
-                    else {
-                        $("#Node" + i).hide()
-                        $("#node-input-computeNode" + i).val("_ADD_")
-                        console.log(i)
-                    } 
-                }
+            // Create an ajax function to get the nodes info
+            let get_face_api_nodes = function () {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: 'flows',
+                        type: 'get',
+                        dataType: 'json',
+                        async: false,
+                        success: async function (data) {
+                            let recognise_node_list = data.flows.filter(item => {
+                                return item.type === "face-api-recognise"
+                            })
+                            recognise_node_list = recognise_node_list.map(item => {
+                                return { 'id': item.id, 'name': item.name }
+                            })
+                            resolve(recognise_node_list)
+                        },
+                        error: function () {
+                            reject([])
+                        }
+                    });
+                })
             }
 
-            updateNodeList(node.numNodes)
+            // Create a function to update the display of the side bar
+            let display_side_bar_html = function (recognise_node_list) {
+                $("#node-input-rule-container").css('min-height', '215px').css('min-width', '300px').editableList({
+                    addItem: function (container, i, opt) {
+                        // Setup the list dropdown
+                        container.css({
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                        });
+                        var row = $('<div/>').appendTo(container);
+                        var recognise_node_dropdown = $('<select/>', { style: "width:95%; margin-left: 5px; text-align: center;" }).appendTo(row);
+                        var recognise_node_dropdown_group = $('<optgroup/>', { label: "recognise nodes" }).appendTo(recognise_node_dropdown);
+
+                        // Add the please select option to the dropdown
+                        recognise_node_dropdown_group.append(
+                            $("<option></option>")
+                                .val("null")
+                                .text("Please select...")
+                        );
+
+                        // Add each recognise node to other dropdown list
+                        recognise_node_list.forEach(recognise_node => {
+                            // Add the value to the drop down list
+                            recognise_node_dropdown_group.append(
+                                $("<option></option>")
+                                    .val(recognise_node.id)
+                                    .text(recognise_node.name)
+                            );
+
+                            // If the opt value is passed and valid change the value immediatley 
+                            if ((typeof opt === 'string' || opt instanceof String) && opt === recognise_node.id) {
+                                recognise_node_dropdown.val(opt).change();
+                            }
+                        });
+                    },
+                    removeItem: function (opt) {
+
+                    },
+                    sortable: false,
+                    removable: true
+                });
+            }
+
+            // Create a function to show all previously added recognise nodes
+            let display_previous_recognise_nodes = function () {
+                node.recognise_nodes.forEach((recognise_node_id) => {
+                    $("#node-input-rule-container").editableList('addItem', recognise_node_id);
+                });
+            }
+
+            // Run the functions in sync
+            get_face_api_nodes()
+                .then(display_side_bar_html)
+                .then(display_previous_recognise_nodes)
+                .catch();
+
+            // Set the handler for model visibility
+            $("#node-input-model").on("change", function () {
+                ($("#node-input-model").val() === "Tiny Yolo") ? $(".yoloOptions").show() : $(".yoloOptions").hide();
+            });
+        },
+        oneditsave: function () {
+            // Get the node from this for later use
+            let node = this
+
+            // Get the list of saved recognise nodes from the DOM element
+            let recognise_nodes = $("#node-input-rule-container").editableList('items');
+
+            // Clear the current list of recognise nodes for the input
+            node.recognise_nodes = [];
+
+            // Push each of the added nodes to the input node array
+            recognise_nodes.each(function (i) {
+                // Get the value of the drop down list to store
+                let value = $(this).find("select").val();
+
+                // Check if value is not null
+                if (value === "null") return;
+
+                // Check the node has not already been added
+                for (var i = 0; i < node.recognise_nodes.length; i++) {
+                    if (node.recognise_nodes[i] === value) return;
+                }
+
+                // Push value to array if valid
+                node.recognise_nodes.push(value);
+            });
         }
     });
 </script>
 
 <script type="text/x-red" data-template-name="face-api-input">
-    <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
+    <!-- General Settings -->
+<h4>General Settings</h4>
+<hr>
+</hr>
 
-    <div class="form-row">
-        <label for="node-config-input-file" style="vertical-align: middle;"><i class="icon-bookmark"></i></label>
-        <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
-            <div class="btn-group">
-                <a id="addButton" class="editor-button" style="width: 49%;"><b>Add Node</b></a>
-                <a id="deleteButton" class="editor-button" style="width: 49%;">Remove Node</a>
-            </div>
-        </div>
-    </div>
+<!-- Input Name -->
+<div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name">
+</div>
 
-    <div class="form-row" id="Node1">
-        <label for="node-input-computeNode1" style="vertical-align: middle;"> Node 1 </label>
-        <input id="node-input-computeNode1">
-    </div>
-    <div class="form-row" id="Node2" >
-        <label for="node-input-computeNode2" style="vertical-align: middle;"> Node 2 </label>
-        <input id="node-input-computeNode2">
-    </div>
-    <div class="form-row" id="Node3">
-        <label for="node-input-computeNode3" style="vertical-align: middle;"> Node 3 </label>
-        <input id="node-input-computeNode3">
-    </div>
-    <div class="form-row" id="Node4">
-        <label for="node-input-computeNode4" style="vertical-align: middle;"> Node 4 </label>
-        <input id="node-input-computeNode4">
-    </div>
-    <div class="form-row" id="Node5">
-        <label for="node-input-computeNode5" style="vertical-align: middle;"> Node 5 </label>
-        <input id="node-input-computeNode5">
-    </div>
-    <div class="form-row" id="Node6">
-        <label for="node-input-computeNode6" style="vertical-align: middle;"> Node 6 </label>
-        <input id="node-input-computeNode6">
-    </div>
-    <div class="form-row" id="Node7">
-        <label for="node-input-computeNode7" style="vertical-align: middle;"> Node 7 </label>
-        <input id="node-input-computeNode7">
-    </div>
-    <div class="form-row" id="Node8">
-        <label for="node-input-computeNode8" style="vertical-align: middle;"> Node 8 </label>
-        <input id="node-input-computeNode8">
-    </div>
-    <div class="form-row" id="Node9">
-        <label for="node-input-computeNode9" style="vertical-align: middle;"> Node 9 </label>
-        <input id="node-input-computeNode9">
-    </div>
-    <div class="form-row" id="Node10">
-        <label for="node-input-computeNode10" style="vertical-align: middle;"> Node 10 </label>
-        <input id="node-input-computeNode10">
-    </div>
+<!-- Detection Settings -->
+<h4>Detection Settings</h4>
+<hr>
+</hr>
+
+<!-- Model -->
+<div class="form-row">
+    <label for="node-input-model" style="vertical-align: middle;"><i class="icon-tag"></i> Detection Type </label>
+    <select type="text" id="node-input-model" style="position: relative; width: 70%;">
+        <option selected="selected">SSD</option>
+        <option>Tiny Yolo</option>
+    </select>
+</div>
+
+<!-- Confidence Level -->
+<div class="form-row">
+    <label for="node-input-confidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Detection Confidence</label>
+    <input type="number" max="100" min="0" id="node-input-confidence" placeholder=50>
+</div>
+
+<!-- Input Size -->
+<div class="form-row" hidden>
+    <label for="node-input-input_size" style="vertical-align: middle;"><i class="icon-bookmark"></i> Input Size</label>
+    <select type="number" id="node-input-input_size" style="position: relative; width: 70%;">
+        <option>128</option>
+        <option>160</option>
+        <option>128</option>
+        <option>224</option>
+        <option>320</option>
+        <option selected="selected">416</option>
+        <option>512</option>
+        <option>608</option>
+    </select>
+</div>
+
+<!-- Landmarks Boolean -->
+<div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-landmarks" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-landmarks" style="width: 70%;"><span> Add <b>Facial Landmarks</b> to each face</span></label>
+</div>
+
+<!-- Expressions Boolean -->
+<div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-expressions" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-expressions" style="width: 70%;"><span>Predict <b>Facial Expressions</b> for each face</span></label>
+</div>
+
+<!-- Age and Gender Boolean -->
+<div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-age_gender" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-age_gender" style="width: 70%;"><span>Predict <b>Age and Gender</b> for each face</span></label>
+</div>
+
+<!-- Descriptors -->
+<div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-descriptors" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-descriptors" style="width: 70%;"><span>Add <b>Descriptors</b> to the output</span></label>
+</div>
+
+
+<!-- Recognition Settings -->
+<h4>Recognition Settings</h4>
+<hr>
+</hr>
+
+<!-- Recognition Metric Field -->
+<div class="form-row">
+    <label for="node-input-match_metric" style="vertical-align: middle;"><i class="icon-bookmark"></i> Recognition Metric</label>
+    <select type="text" id="node-input-match_metric" style="position: relative; width: 70%;">
+        <option>Euclidean</option>
+        <option>Manhattan</option>
+        <option>Chebyshev</option>
+        <option selected="selected">Mean Squared Error</option>
+    </select>
+</div>
+
+<!-- Recognition confidence Field -->
+<div class="form-row">
+    <label for="node-input-match_confidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Matched Confidence</label>
+    <input type="number" min="0" id="node-input-match_confidence" placeholder="Enter a number between 0 and 10,000">
+</div>
+
+<!-- Recognise Node List -->
+<div class="form-row node-input-rule-container-row">
+    <ol id="node-input-rule-container"></ol>
+</div>
+
+<!-- Recognise Node Editor -->
+<div class="form-row">
+    <label for="node-input-recognise_node_editor" style="vertical-align: middle;">Add/Edit</label>
+    <input id="node-input-recognise_node_editor">
+</div>
+
+<!-- Padding Bottom -->
+<hr style="padding-bottom: 18px">
+</hr>
 </script>
 
 <script type="text/x-red" data-help-name="face-api-input">
     <h3>Overview</h3>
     <p>
-        Use this input node to pass image data to a central compute node.
+        Use this input node to pass image data to a central recognise node.
     </p> 
 
     <h3>Inputs</h3>
@@ -126,8 +273,8 @@
 
     <h3>Options</h3>
     <dl class="message-properties">
-        <dt>Compute <span class="property-type">Node</span> </dt>
-        <dd> Select or create a Compute Node which the input is linked to </dd>
+        <dt>recognise <span class="property-type">Node</span> </dt>
+        <dd> Select or create a recognise Node which the input is linked to </dd>
 
         <dt>Name <span class="property-type">Dropdown</span> </dt>
         <dd> The Name of the Node </dd>
@@ -135,8 +282,8 @@
 
     <h3>Details</h3>
     <p>
-        This node acts as a proxy to pass images to its selected <code>Compute Node</code>. 
-        The image needs to be a binary buffer for the node to pass it to the compute node.
+        This node acts as a proxy to pass images to its selected <code>recognise Node</code>. 
+        The image needs to be a binary buffer for the node to pass it to the recognise node.
     </p> 
         
     <h3>References</h3>
@@ -146,97 +293,37 @@
     </ul>
 </script>
 
-<!-- Compute Node -->
+<!-- Recognise Node -->
 <script type="text/javascript">
-    RED.nodes.registerType('face-api-compute', {
+    RED.nodes.registerType('face-api-recognise', {
         category: 'config',
         icon: "file.png",
         defaults: {
-            name : {value:"face-api-compute", required:true},
-            childHost : {value:true, required:true},
-            recognitionType : {value:"SSD", required:true},
-            multipleFaces : {value:"Multiple Faces", required:true},
-            confidence : {value:50},
-            inputSize : {value:416},
-            landmarks : {value:false, required:true},
-            expressions : {value:false, required:true},
-            ageGender : {value:false, required:true},
-            recognition : {value:false},
-            labelName : {value:"known"},
-            recognitionMetric : {value : "Mean Squared Error"},
-            recognitionConfidence : {value : 0},
-            file : {value:""}
+            name: { value: "Unknown", required: true },
+            file: { value: "" }
         },
-        label: function() {
-            return this.name || "face-api-compute"
+        label: function () {
+            return this.name || "face-api-recognise"
         },
-        oneditsave: function(){
-            const filesToUpload = $("#node-config-input-file").prop("files");
-
-            if (filesToUpload.length) {
-                // Get the current ID of the node
-                const link          = "faceapi/" + this.id;
-
-                // Create the data
-                let   data          = new FormData();
-                $.each(filesToUpload, function (key, value) {
-                    data.append(key, value);
-                });
-
-                $.ajax({
-                    url: link,
-                    type: 'POST',
-                    data: data,
-                    cache: false,
-                    processData: false,
-                    contentType: false,
-                    success: function (data, textStatus) {
-                        
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        RED.notify("Error API: " + errorThrown, "error", false, 5000);
-                    }
-                })
-            }
-            $("#node-config-input-file").val('');
-        },
-        oneditprepare: function() {
+        oneditprepare: function () {
             // Get the Id of the node for functions to use
             const thisId = this.id
-            
-            // Set the handler for Type visibility
-            const typeElement    = $("#node-config-input-recognitionType")
-            typeElement.on("change", function(){
-                if(typeElement.val() === "Yolo") {
-                    $(".yoloOptions").show()
-                }
-                else {
-                    $(".yoloOptions").hide()
-                }
-            })
-
-            // Set the handler for recognition visibility
-            const recognitionElement    = $("#node-config-input-recognition")
-            recognitionElement.on("change", function(){
-                if(recognitionElement.is(":checked")) {
-                    $(".recognitionOptions").show()
-                }
-                else {
-                    $(".recognitionOptions").hide()
-                }
-            })
 
             // Set up the button callbacks for when clicked
-            $("#node-config-input-file").on("change", function() {
-                if ($("#node-config-input-file").prop("files").length) {
+            $("#node-node-config-file").on("change", function () {
+                if ($("#node-node-config-file").prop("files").length) {
                     $("#recognitionStatus").html("<b>Files added.</b> Click \"Update\" to upload. This make take a while so please be patient")
                 }
             })
-            $("#fileButton").on("click", function() {
+
+            // Setup file button to allow uploads of images to the webpage
+            $("#fileButton").on("click", function () {
                 $("#recognitionStatus").html("<b>Please select one or more valid images</b>")
-                $("#node-config-input-file").trigger("click");
+                $("#node-node-config-file").trigger("click");
             })
-            $("#deleteButton").on("click", function() {
+
+            // Setup the delete button to remove descriptors if wanted 
+            $("#deleteButton").on("click", function () {
                 $.ajax({
                     url: "faceapi/" + thisId + "/delete",
                     type: 'GET',
@@ -259,7 +346,7 @@
             })
 
             // Get the status of how many descriptors are stored
-            $.get("faceapi/" + thisId + "/check", function(data){
+            $.get("faceapi/" + thisId + "/check", function (data) {
                 if (data > 0) {
                     $("#recognitionStatus").html("<b>" + data.toString() + "</b>" + ((data > 1) ? " descriptors exist for this node" : " descriptor exists for this node"))
                 }
@@ -270,106 +357,80 @@
                     $("#recognitionStatus").html("<b>Unknown state of descriptor</b>")
                 }
             });
+        },
+        oneditsave: function () {
+            // Get the files to upload from the DOM element
+            const filesToUpload = $("#node-node-config-file").prop("files");
+
+            // If there are 1 or more files uplaod them to the backend
+            if (filesToUpload.length) {
+                // Notify the user
+                RED.notify("Attempting to create descriptors from images, please wait...", "info", false, 5000);
+
+                // Get the current ID of the node and create a URL
+                const uri = "faceapi/" + this.id + "/create";
+
+                // Create the data
+                let data = new FormData();
+                $.each(filesToUpload, function (key, value) {
+                    data.append(key, value);
+                });
+
+                // Send data using ajax to backend url
+                $.ajax({
+                    url: uri,
+                    type: 'POST',
+                    data: data,
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (data, textStatus) {
+                        RED.notify("Successfully created descriptors from images", "info", false, 5000);
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        RED.notify("Error Creating Descriptors: " + textStatus, "error", false, 5000);
+                    }
+                })
+            }
+
+            // Set the file field to null on exit
+            $("#node-node-config-file").val('');
         }
     });
 </script>
 
-<script type="text/x-red" data-template-name="face-api-compute">
-    <div class="form-row">
-        <label for="node-config-input-name" style="vertical-align: middle;"><i class="icon-bookmark"></i> Name </label>
-        <input type="text" id="node-config-input-name" placeholder="Name of this node">
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-recognitionType" style="vertical-align: middle;"><i class="icon-tag"></i> Detection Type </label>
-        <select type="text" id="node-config-input-recognitionType" style="position: relative; width: 70%;">
-            <option selected="selected">SSD</option>
-            <option>Yolo</option>
-        </select>
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-multipleFaces" style="vertical-align: middle;"><i class="icon-tag"></i> Faces to Detect</label>
-        <select type="text" id="node-config-input-multipleFaces" style="position: relative; width: 70%;">
-            <option>Single Face</option>
-            <option selected="selected">Multiple Faces</option>
-        </select>
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-confidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Detection Confidence</label>
-        <input type="number" max="100" min="0" id="node-config-input-confidence" placeholder=50>
-    </div>
-    <div class="form-row yoloOptions" hidden>
-        <label for="node-config-input-inputSize" style="vertical-align: middle;"><i class="icon-bookmark"></i> Input Size</label>
-        <select type="number" id="node-config-input-inputSize" style="position: relative; width: 70%;">
-            <option>128</option>
-            <option>160</option>
-            <option>128</option>
-            <option>224</option>
-            <option>320</option>
-            <option selected="selected">416</option>
-            <option>512</option>
-            <option>608</option>
-        </select>
-    </div>
-    <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" checked id="node-config-input-childHost" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-config-input-childHost" style="width: 70%;"><span> Create <b>child</b> process</span></label>
-    </div>
-    <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" id="node-config-input-landmarks" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-config-input-landmarks" style="width: 70%;"><span> Add <b>Facial Landmarks</b> to each face</span></label>
-    </div>
-    <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" id="node-config-input-expressions" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-config-input-expressions" style="width: 70%;"><span>Predict <b>Facial Expressions</b> for each face</span></label>
-    </div>
-    <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" id="node-config-input-ageGender" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-config-input-ageGender" style="width: 70%;"><span>Predict <b>Age and Gender</b> for each face</span></label>
-    </div>
-    <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" id="node-config-input-recognition" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-config-input-recognition" style="width: 70%;"><span> <b>Recognise</b> a face in image</span></label>
-    </div>
-    <div class="form-row recognitionOptions" hidden>
-        <label for="node-config-input-recognitionMetric" style="vertical-align: middle;"> Recognition Metric </label>
-        <select type="text" id="node-config-input-recognitionMetric" style="position: relative; width: 70%;">
-            <option>Euclidean</option>
-            <option>Manhattan</option>
-            <option>Chebyshev</option>
-            <option selected="selected">Mean Squared Error</option>
-        </select>
-    </div>
-    <div class="form-row recognitionOptions">
-        <label for="node-config-input-recognitionConfidence" style="vertical-align: middle;"><i class="icon-bookmark"></i> Matched Confidence</label>
-        <input type="number" min="0" id="node-config-input-recognitionConfidence" placeholder=0>
-    </div>
-    <div class="form-row recognitionOptions" hidden>
-        <label for="node-config-input-file" style="vertical-align: middle;"><i class="icon-bookmark"></i> Add Descriptor</label>
-        <input type="file" multiple accept="image/*" id="node-config-input-file" style="position:absolute; top:-100px">
+<script type="text/x-red" data-template-name="face-api-recognise">
+    <!-- Name Field -->
+<div class="form-row">
+    <label for="node-config-input-name" style="vertical-align: middle;"><i class="icon-bookmark"></i> Name </label>
+    <input type="text" id="node-config-input-name" placeholder="Name of the face used in this node">
+</div>
 
-        <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
-            <div class="btn-group">
-                <a id="fileButton" class="editor-button"><b>Add Images</b></a>
-                <a id="deleteButton" class="editor-button">Remove Descriptors</a>
-            </div>
+<!-- File uploads -->
+<div class="form-row">
+    <label for="node-node-config-file" style="vertical-align: middle;"><i class="icon-bookmark"></i> Add Descriptor</label>
+    <input type="file" multiple accept="image/*" id="node-node-config-file" style="position:absolute; top:-100px">
+
+    <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
+        <div class="btn-group">
+            <a id="fileButton" class="editor-button"><b>Add Images</b></a>
+            <a id="deleteButton" class="editor-button">Remove Descriptors</a>
         </div>
     </div>
-    <div class="form-row recognitionOptions" hidden>
-        <label for="recognitionStatus"></label>
-        <label id="recognitionStatus" style="width: 70%;"></label>
-    </div>
+</div>
+
+<!-- Descriptor status -->
+<div class="form-row">
+    <label for="recognitionStatus"></label>
+    <label id="recognitionStatus" style="width: 70%;"></label>
+</div>
 
 </script>
 
-<script type="text/x-red" data-help-name="face-api-compute">
+<script type="text/x-red" data-help-name="face-api-recognise">
     <h3>Overview</h3>
     <p>
-        Computes the desired facial recognition outputs as defined from the face-api.js API.
+        recognises the desired facial recognition outputs as defined from the face-api.js API.
     </p> 
 
     <h3>Options</h3>
