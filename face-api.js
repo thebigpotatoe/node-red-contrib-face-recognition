@@ -4,9 +4,11 @@ const recognise_node = require('./app/nodes/recognise_node')
 const add_descriptors = require('./app/endpoints/add_descriptors');
 const check_descriptors = require('./app/endpoints/check_descriptors');
 const delete_descriptors = require('./app/endpoints/delete_descriptors');
+const create_descriptor_location = require('./app/helpers/create_descriptor_location');
 
 // Set the global variables for the app
 global.descriptor_location = require('path').join(__dirname, 'app/descriptors')
+create_descriptor_location(global.descriptor_location);
 
 // Export the nodes
 module.exports = function (RED) {
