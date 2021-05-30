@@ -49,14 +49,17 @@ function get_descriptors(name, data) {
                 }
             });
 
-            // Convert the descriptor data back to float32 after child inference
-            let descriptor_array = new Float32Array(128);
-            for (const [key, value] of Object.entries(results.detected_faces[0].descriptor)) {
-                descriptor_array[key] = value;
-            }
+            // Check if there was a detected face
+            if (results.detected_faces.length) {
+                // Convert the descriptor data back to float32 after child inference
+                let descriptor_array = new Float32Array(128);
+                for (const [key, value] of Object.entries(results.detected_faces[0].descriptor)) {
+                    descriptor_array[key] = value;
+                }
 
-            // Add descriptor to complete descriptor array
-            descriptors.push(descriptor_array);
+                // Add descriptor to complete descriptor array
+                descriptors.push(descriptor_array);
+            }
         }
 
         // Resolve with a labelled face descriptor
