@@ -57,7 +57,7 @@ module.exports = function (msg, external_fork) {
             });
 
             child_process.stderr.on('data', (data) => {
-                // console.error(data.toString());
+                console.debug(data.toString());
             })
         }
         else {

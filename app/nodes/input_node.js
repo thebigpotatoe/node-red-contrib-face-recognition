@@ -188,7 +188,7 @@ module.exports = function (RED, config, node) {
 
                 // Add logging
                 node.child.stderr.on('data', (data) => {
-                    node.RED.log.warn(data.toString());
+                    node.RED.log.debug(data.toString());
                 })
             }
 
