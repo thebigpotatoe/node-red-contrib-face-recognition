@@ -159,8 +159,11 @@ module.exports = function (RED, config, node) {
         return Promise.all(node.recognise_nodes.map((id) => {
             return node._get_recognise_node(id)
                 .then((recognise_node) => { return recognise_node.get_descriptor(); })
-                .then((descriptor) => { return descriptor.toJSON() });
-        }));
+                .then((descriptor) => { return descriptor.toJSON() })
+                .catch((err) => { return null; });
+        })).then((descriptors) => {
+            return descriptors.filter(x => x)
+        });
     }
     node._create_fork = function () {
         return new Promise(async function (resolve, reject) {
@@ -185,7 +188,7 @@ module.exports = function (RED, config, node) {
 
                 // Add logging
                 node.child.stderr.on('data', (data) => {
-                    // node.RED.log.warn(data.toString());
+                    node.RED.log.warn(data.toString());
                 })
             }
 
