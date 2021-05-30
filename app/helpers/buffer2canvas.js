@@ -10,9 +10,14 @@ module.exports = async function (buffer) {
     return new Promise(async function (resolve, reject) {
         try {
             let img = new Image;
-            img.src = buffer; 
-            const canvas_img = faceapi.createCanvasFromMedia(img);
-            resolve(canvas_img);
+            img.onload = function () {
+                const canvas_img = faceapi.createCanvasFromMedia(img);
+                resolve(canvas_img);
+            };
+            img.onerror = function (err) {
+                reject(err)
+            }
+            img.src = buffer;
         }
         catch (err) {
             reject(err);
