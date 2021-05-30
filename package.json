@@ -5,11 +5,14 @@
     "main": "app/face-api.js",
     "keywords": [
         "node-red",
-        "face-api.js"
+        "face-api.js",
+        "facial recognition",
+        "easy",
+        "fast",
+        "multiple faces",
+        "recognition",
+        "detection"
     ],
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/thebigpotatoe/node-red-contrib-face-recognition.git"
@@ -30,6 +33,7 @@
         "manhattan": "1.0.0"
     },
     "devDependencies": {
+        "nodemon": "^2.0.7",
         "node-red": "^1.3.3"
     },
     "directories": {
