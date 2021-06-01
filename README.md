@@ -136,7 +136,7 @@ The `face-api-input` node is the main node that runs inference over an input ima
 
 - __Age and Gender__: Select this if you would like to add a prediction of the age and gender of each face to the output. (Defaults to false)
 
-- __Descriptors__: Select this if you would like to output the computed descriptros for each found face. (Defaults to false)
+- __Descriptors__: Select this if you would like to output the computed descriptors for each found face. (Defaults to false)
 
 #### Recognition Settings
 
