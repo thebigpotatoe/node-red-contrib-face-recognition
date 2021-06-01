@@ -262,7 +262,7 @@
 <script type="text/x-red" data-help-name="face-api-input">
     <h3>Overview</h3>
     <p>
-        Use this input node to pass image data to a central recognise node.
+        Use this input node to inference on an image. Add recognise nodes to recognise faces.
     </p> 
 
     <h3>Inputs</h3>
@@ -273,17 +273,47 @@
 
     <h3>Options</h3>
     <dl class="message-properties">
-        <dt>recognise <span class="property-type">Node</span> </dt>
-        <dd> Select or create a recognise Node which the input is linked to </dd>
+        <dt>Name <span class="property-type">String</span> </dt>
+        <dd> The name of the node instance, this will also be the label for recognition </dd>
 
-        <dt>Name <span class="property-type">Dropdown</span> </dt>
-        <dd> The Name of the Node </dd>
+        <dt>Detection Type <span class="property-type">Dropdown</span> </dt>
+        <dd> The type of algorithm to use (SSD or Yolo) </dd>
+
+        <dt class=>Detection Confidence <span class="property-type">Number</span></dt>
+        <dd> The minimum confidence value to accept as a face. Defaults to 50%</dd>
+
+        <dt class="optional">Input Size <span class="property-type">Dropdown</span></dt>
+        <dd> The input size of the Yolo algorithm. Defaults to 416</dd>
+
+        <dt class="optional">Facial Landmarks <span class="property-type">Check Box</span></dt>
+        <dd> Check this to add facial landmarks to the calculation of each face</dd>
+        
+        <dt class="optional">Facial Expressions <span class="property-type">Check Box</span></dt>
+        <dd> Check this to add facial expressions to the calculation of each face</dd>
+
+        <dt class="optional">Age and Gender <span class="property-type">Check Box</span></dt>
+        <dd> Check this to calculate the age and gender of each face</dd>
+
+        <dt class="optional">Descriptors <span class="property-type">Check Box</span></dt>
+        <dd> Check this to add the facial descriptors to the output</dd>
+
+        <dt class="optional">Recognition Metric <span class="property-type">Dropdown</span></dt>
+        <dd> The type of metric to compare faces for recognition. Defaults to Mean Squared Error</dd>
+
+        <dt class="optional">Matched Confidence <span class="property-type">Numeric</span></dt>
+        <dd> The cutoff value to decide if a face is recognised or not. Defaults to 0</dd>
+
+        <dt class="optional">Recognise Nodes List <span class="property-type">Check Box</span></dt>
+        <dd> Add recognise nodes here to match detected faces to known faces</dd>
+
+        <dt class="optional">Add/Edit <span class="property-type">Check Box</span></dt>
+        <dd> Add or edit recognise nodes to add to the list</dd>
     </dl>
 
     <h3>Details</h3>
     <p>
-        This node acts as a proxy to pass images to its selected <code>recognise Node</code>. 
-        The image needs to be a binary buffer for the node to pass it to the recognise node.
+        This node is a central inference node for running facial detection and recognition on. Use <code>recognise nodes</code>. 
+        to compare detected faces to known ones.
     </p> 
         
     <h3>References</h3>
@@ -430,47 +460,13 @@
 <script type="text/x-red" data-help-name="face-api-recognise">
     <h3>Overview</h3>
     <p>
-        recognises the desired facial recognition outputs as defined from the face-api.js API.
+        Recognises the desired face based on previous known detections.
     </p> 
 
     <h3>Options</h3>
     <dl class="message-properties">
         <dt>Name <span class="property-type">String</span> </dt>
         <dd> The name of the node instance, this will also be the label for recognition </dd>
-
-        <dt>Detection Type <span class="property-type">Dropdown</span> </dt>
-        <dd> The type of algorithm to use (SSD or Yolo) </dd>
-
-        <dt>Faces to Detect <span class="property-type">Dropdown</span> </dt>
-        <dd> Weather to find one or multiple faces </dd>
-
-        <dt class="optional">Detection Confidence <span class="property-type">Number</span></dt>
-        <dd> The minimum confidence value to accept as a face. Defaults to 50%</dd>
-
-        <dt class="optional">Input Size <span class="property-type">Dropdown</span></dt>
-        <dd> The input size of the Yolo algorithm. Defaults to 416</dd>
-
-        <dt>Child Process <span class="property-type">Check Box</span></dt>
-        <dd> Runs the calculations in a child process to unblock the main thread. Defaults to true</dd>
-
-        <dt class="optional">Facial Landmarks <span class="property-type">Check Box</span></dt>
-        <dd> Check this to add facial landmarks to the calculation of each face</dd>
-        
-        <dt class="optional">Facial Expressions <span class="property-type">Check Box</span></dt>
-        <dd> Check this to add facial expressions to the calculation of each face</dd>
-
-        <dt class="optional">Age and Gender <span class="property-type">Check Box</span></dt>
-        <dd> Check this to calculate the age and gender of each face</dd>
-
-        <dt class="optional">Recognise <span class="property-type">Check Box</span></dt>
-        <dd> Check this to calculate the distance between the input and stored descriptor. Must have chosen a image to create a descriptor first</dd>
-
-        <dt class="optional">Recognition Metric <span class="property-type">Dropdown</span></dt>
-        <dd> The type of metric to compare faces for recognition. Defaults to Mean Squared Error</dd>
-
-        <dt class="optional">Matched Confidence <span class="property-type">Numeric</span></dt>
-        <dd> The cutoff value to decide if a face is recognised or not. Defaults to 0</dd>
-
     </dl>
 
     <h3>Details</h3>
