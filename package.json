@@ -43,6 +43,9 @@
         "face-api.js"
     ],
     "main": "app/face-api.js",
+    "scripts": {
+        "test": "node tests/test.js"
+    },
     "node-red": {
         "nodes": {
             "face-api": "face-api.js"
