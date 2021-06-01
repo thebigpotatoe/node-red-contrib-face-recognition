@@ -1,10 +1,10 @@
 # node-red-contrib-face-recognition
 
-## Outdated Warning
+## Version 2 Out Now!
 
-This node is now becoming outdated and is struggling to run across all systems with ease (also not to mention the code needs some serious work to improve). Due to this it will not be actively maintained however I will look at pull requets if they are made and might come back to this in the future. As another option which is far more portable and flexible to use even from node-red check out my [docker version of face-api.js!](https://github.com/thebigpotatoe/face-recognition-docker)
+Version 2.0.0 is now officially released brining performance increases, better useability, and more support across systems. Testing is still ongoing, so if you come across any bugs please open an issue or a discussion here.
 
-## Intro
+## Overview
 
 This node aims to wrap the epic [Face-API.js library](https://github.com/justadudewhohacks/face-api.js) from [justadudewhohacks](https://github.com/justadudewhohacks) into a simple to import and use node in Node-Red. If you like anything in this repo be sure to also check out the original.
 
@@ -18,76 +18,117 @@ Usage of this node is designed to be very easy while allowing the user to choose
 - __Age and Gender Predictions__
 - __Facial Recognition__
 
-This module also utilizes the `child_process` module of Node.js to offload the complex calculations required to a separate thread. In turn, the offloaded task will not block the main event loop and allow Node-Red to continue other tasks. This is entirely optional and up to the user to decide to allow for better management of resources on a constrained device such as the Raspberry Pi.
+This module also utilizes the `child_process` module of Node.js to offload the complex calculations required to a separate thread. In turn, the offloaded task will not block the main event loop and allow Node-Red to continue other tasks. Each input node spawns a new fork, which will consume memory, so this may want to be limited on resource restricted environments.
 
 ## Installation
 
-From your .node-red directory, you can run;
+From your `.node-red` directory, you can run;
 
-`npm install node-red-contrib-face-recognition`
+``` bash
+npm install node-red-contrib-face-recognition
+```
 
 or you can go to the pallette manager in Node-Red and find `node-red-contrib-face-recognition` in the install tab.
 
-> Linux users (including raspberry pi) should read [this issue](https://github.com/thebigpotatoe/node-red-contrib-face-recognition/issues/4#issuecomment-579821200) if having issues with installing canvas.
+### Canvas
 
-## Example Flow
+Canvas will be installed correctly providing when using either installation method, however the required packages need to be installed on the system. These are as follows for several common OS's;
 
-As an example on how to use the node, below is a flow that grabs an image from the internet and runs inference over it. Copy and paste it into Node-Red to use, but make sure to install the following nodes from the pallet manager;
+#### Windows
 
-- node-red-node-base64
-- node-red-contrib-image-output
+No requirements
 
-![Example](Images/Example%20Flow.PNG)
+#### Mac
 
+`¯\_(ツ)_/¯`
+
+#### Linux (Debian Based)
+
+``` bash
+apt-get install -y python \
+    g++ \
+    build-essential \
+    libcairo2-dev \
+    libjpeg-dev
 ```
-[{"id":"5c9785ae.c524dc","type":"inject","z":"5a397940.a17aa8","name":"Input","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":"","x":170,"y":80,"wires":[["bb3493cb.b73e2"]]},{"id":"2bdf00a.e8771","type":"image","z":"5a397940.a17aa8","name":"Labeled Image","width":"640","x":860,"y":180,"wires":[]},{"id":"16eacc92.6a4173","type":"image","z":"5a397940.a17aa8","name":"Input Image","width":"640","x":190,"y":180,"wires":[]},{"id":"beebc96a.133208","type":"change","z":"5a397940.a17aa8","name":"Set Payload to Image","rules":[{"t":"set","p":"payload","pt":"msg","to":"payload[\"TBB Faces\"].image","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":880,"y":140,"wires":[["2bdf00a.e8771"]]},{"id":"e0664c84.eb4f5","type":"debug","z":"5a397940.a17aa8","name":"Debug","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","x":830,"y":80,"wires":[]},{"id":"bb3493cb.b73e2","type":"http request","z":"5a397940.a17aa8","name":"Get Image","method":"GET","ret":"bin","paytoqs":false,"url":"https://thumbor.forbes.com/thumbor/960x0/https%3A%2F%2Fblogs-images.forbes.com%2Fmaddieberg%2Ffiles%2F2017%2F09%2Fbigbangtheorytv_s05e01_05-_h_2017.jpg","tls":"","proxy":"","authType":"basic","x":330,"y":80,"wires":[["c70b7138.ebfc7","75806a6d.7a55b4"]]},{"id":"c70b7138.ebfc7","type":"base64","z":"5a397940.a17aa8","name":"","action":"","property":"payload","x":180,"y":140,"wires":[["16eacc92.6a4173"]]},{"id":"75806a6d.7a55b4","type":"face-api-input","z":"5a397940.a17aa8","name":"Find Faces","numNodes":1,"computeNode1":"5adfec11.8f4ef4","computeNode2":"","computeNode3":"","computeNode4":"","computeNode5":"","computeNode6":"","computeNode7":"","computeNode8":"","computeNode9":"","computeNode10":"","x":510,"y":80,"wires":[["e0664c84.eb4f5","beebc96a.133208"]]},{"id":"5adfec11.8f4ef4","type":"face-api-compute","z":"","name":"TBB Faces","childHost":true,"recognitionType":"SSD","multipleFaces":"Multiple Faces","confidence":"50","inputSize":"416","landmarks":true,"expressions":true,"ageGender":true,"recognition":false,"labelName":"known","file":""}]
+
+#### Official Docker Image
+
+``` bash
+apk add python \
+    g++ \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    musl-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev
 ```
-## TensorFlow for Node.js (Optional)
+
+### TensorFlow for Node.js (Optional)
 
 You can also optionally install TensorFlow for Node.js to make this package run faster. If you do not, the node will still run albeit much slower. To install TensorFlow navigate to your `.node-red` folder and run the following command. This will install TensorFlow in your Node-Red directory for use by the node.
 
 `npm install @tensorflow/tfjs-node`
 
-> There are known issues with the working combinations version of Node.js, @tensorflow/tfjs-node and face-api.js. At the time of writing this, on a windows environment these were found to be;
+> There are known issues with the working combinations version of Node.js, @tensorflow/tfjs-node and face-api.js. At the time of writing this, these were found to be;
 > - Node.js: 10.16.3
 > - @tensorflow/tfjs-node: 1.2.11
-> - face-api.js: 0.21.0 
+> - face-api.js: 0.21.0
 
 > Please install these to gain the speed of the tf c++ backend and keep up to date on the face-api.js GitHib page for any errors relating to this.
 
+tfjs-node is unfortunatley not supported on all OS's and all architectures. Below is a table of where they are supported;
+
+|OS                      | x86 | armv7 | arm64v8 |
+|------------------------|-----|-------|---------|
+|windows                 | yes | n/a   | n/a     |
+|mac                     | ?   | n/a   | n/a     |
+|linux                   | yes | no    | no      |
+|official docker image   | no  | no    | no      |
+|unofficial docker image | yes | no    | no      |
+
+## Example Flow
+
+As an example on how to use the node, below is a flow that grabs an image from the internet and runs inference over it. Copy and paste it into Node-Red to use, but make sure to install the following nodes from the pallet manager;
+
+- node-red-contrib-image-output
+
+> Note: In order to recognise faces you will need to add the recognise config nodes yourself as these cannot be exported across instances.
+
+![Example](Images/Example%20Flow.PNG)
+
+``` JSON
+[{"id":"c08c9d7b.c2377","type":"image","z":"4eb4b426.c9cfcc","name":"","width":"320","data":"payload","dataType":"msg","thumbnail":false,"pass":false,"outputs":0,"x":120,"y":100,"wires":[]},{"id":"461f82e0.80fc8c","type":"image","z":"4eb4b426.c9cfcc","name":"","width":"640","data":"payload.labelled_img","dataType":"msg","thumbnail":false,"pass":false,"outputs":0,"x":440,"y":100,"wires":[]},{"id":"453418e3.520f28","type":"face-api-input","z":"4eb4b426.c9cfcc","name":"TBBT Recognition","model":"SSD","confidence":50,"input_size":"128","landmarks":false,"expressions":true,"age_gender":true,"descriptors":true,"match_metric":"Mean Squared Error","match_confidence":"2500","recognise_nodes":["a88d60e.9ca13a","5d6c06f7.11d2c8","71bfb897.3b8ef8","e09c0d5.ca5acf","dc3c3afc.04e708","eb7ecb3c.a1cbb8","b4b62a6d.fc5c18"],"recognise_node_editor":"b4b62a6d.fc5c18","x":450,"y":40,"wires":[["461f82e0.80fc8c","4d4a98a1.c04008"]]},{"id":"d7b82011.6cfd1","type":"http request","z":"4eb4b426.c9cfcc","name":"TBBT","method":"GET","ret":"bin","paytoqs":"ignore","url":"https://www.etonline.com/sites/default/files/images/2019-05/bigbangtheory.jpg","tls":"","persist":false,"proxy":"","authType":"","x":230,"y":40,"wires":[["453418e3.520f28","c08c9d7b.c2377"]]},{"id":"492a9534.4d694c","type":"inject","z":"4eb4b426.c9cfcc","name":"","props":[{"p":"payload","v":"","vt":"str"},{"p":"topic","v":"","vt":"string"}],"repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"str","x":90,"y":40,"wires":[["d7b82011.6cfd1"]]},{"id":"4d4a98a1.c04008","type":"debug","z":"4eb4b426.c9cfcc","name":"","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"false","statusVal":"","statusType":"auto","x":650,"y":40,"wires":[]},{"id":"b4b62a6d.fc5c18","type":"face-api-recognise","name":"Leonard"}]
+```
+
 ## Included Nodes
 
-This module comes with two nodes; the `face-api-input` node and `face-api-compute` node.
+This module comes with two nodes; the `face-api-input` node and `face-api-recognise` node.
 
-#### Input node
+### Input node
 
 ![Input Node](Images/face-api-input-node-menu.JPG)
 
-The `face-api-input` node acts as a pipeline between a flow and the compute nodes. Multiple compute nodes can be created and at least one must be selected for the input node to work. By using a config node based approach, multiple input nodes can share the same resources on your device allowing for a smaller memory footprint of the module.
+#### Description
 
-The input node is capable of utilizing 10 compute nodes to process an image. The output of the input node is an array of results from each individual compute nodes containing information about found faces, the over layed image and individual inference time. 
+The `face-api-input` node is the main node that runs inference over an input image and optionally utilised recognition nodes to recognise faces. Each input node spawns a `fork` which is a seperate nodejs instance to run the recognition on to avoid blocking the main node-red event loop. This takes resources, be be conservative on resource constrained environments.
 
-To add multiple compute nodes to the input simply click the __Add node__ button in the edit dialog. This will add an option to select another compute node from a list of already created nodes. If you have multiple nodes but do not fill in any of them, they will be ignored. Only Node 1 is required.
+#### General Settings
 
-By design, if a node is computing and another image is sent to that node, it will be ignored until the compute node has finished. This allows users to use a stream of images as an input and not worry about queued images bogging down the event loop.
+- __Name__: The name of this specific node. Useful to change when you have multiple config nodes and need to know the difference between them. (defaults to "face-api-input")
 
-#### Compute Node
-
-![Input Node](Images/face-api-compute-node-menu.JPG)
-
-The `face-api-compute` node is where all the options are set and calculations done. There are numerous options, so as a brief outline these are;
-
-- __Name__: The name of this specific node. Useful to change when you have multiple config nodes and need to know the difference between them. (defaults to "face-api-compute")
+#### Detection Settings
 
 - __Detection Type__: The detection type to use. This is either `SSD` or `Yolo`, as `MTCNN` is not currently supported. (Defaults to SSD)
 
-- __Faces to Detect__: The number of detections to calculate. Either all faces found as `"Multiple Faces"` or the highest confidence one as `"Single Face"`. (Defaults to Multiple)
-
-- __Detection Confidence__: The minimum confidence score that each detected face much be above to be counted as a face. This option is available for both SSD and Yolo. (Defaults to 50%, Limited between 0 and 100)
-
 - __Input Size__: The input size of the Yolo algorithm. This option is only available when using Yolo as the type. (Defaults to 416)
 
-- __Child Process__: Select if you would like to run the algorithm in a `child_process`. This will offload from the main event loop but use more resources. Use carefully. (Defaults to true)
+- __Detection Confidence__: The minimum confidence score that each detected face much be above to be counted as a face. This option is available for both SSD and Yolo. (Defaults to 50%, Limited between 0 and 100)
 
 - __Facial Landmarks__: Select this if you would like to add facial landmarks of each face to the output. (Defaults to false)
 
@@ -95,33 +136,35 @@ The `face-api-compute` node is where all the options are set and calculations do
 
 - __Age and Gender__: Select this if you would like to add a prediction of the age and gender of each face to the output. (Defaults to false)
 
-- __Recognise__: Select this if you would like to try recognise each face in the output. This will require adding a descriptor by uploading an image using the supplied add image button. (Defaults to false)
+- __Descriptors__: Select this if you would like to output the computed descriptors for each found face. (Defaults to false)
 
-- __Recognition Metric__: Select the type of recognition metric to use when comparing faces with the recognition option. This is option is only shown when the recognise option is selected.
+#### Recognition Settings
 
-- __Matched Confidence__: This is the minimum cutoff value for recognition for each of the metrics. Keep in mind that the metrics will produce different ranges of values for recognition. This is option is only shown when the recognise option is selected.
+- __Recognition Metric__: Select the type of recognition metric to use when comparing faces with the recognition option. This is option is only shown when the recognise option is selected. (Defaults to Mean Squared Error)
 
-- __Add Images__: Use this button to add an image to create a descriptors from. These descriptors will then be used in the compute node to predict against an input. This is option is only shown when the recognise option is selected.
+- __Matched Confidence__: This is the minimum cutoff value for recognition for each of the metrics. Keep in mind that the different metrics will produce different ranges of values for recognition. This is option is only shown when the recognise option is selected. (Typical cutoffs are around 2000)
 
-- __Remove Descriptors__: Use this button to remove the currently stored descriptors. This is option is only shown when the recognise option is selected and is irreversible.
+- __Recognise Nodes List__: A list of recognition nodes to run recognition against for each face found in an input image. Simply add and remove as many as required, there are no limits
 
-#### Adding a face descriptor
+- __Add/Edit Recognise Nodes__: Use this dropdown menu to add and edit new recognise nodes which you can then add to the input node list. Keep in mimd you will have to deploy the node before being able to find it in the list.
 
-In order to use the facial recognition option, facial descriptors must be calculated first to allow a comparison between them and any input image. To do this, check `enable recognition`, then click `Add Images`. Once selected all images will be computed either on the next deploy if your node is new, or immediately if your node already exists.
+#### Compute Node
 
-Currently the node will compute the face descriptor in the main node-red thread. Due to this, the deploy action will be blocking until finished. This was by design so that the descriptors would be computed before using the compute node they are associated with. This may take some time if not using `tensorflow for nodejs`, so please be patient on deploys for large sets of images.
+![Input Node](Images/face-api-recognise-node-menu.JPG)
 
-These descriptors are then saved to disk allowing it to survive restarts of Node-Red. A saved file will then be loaded on startup of Node-Red. Saving the descriptor is also safer than saving an image if your Node-Red instance is online as no data about the original image is stored.
+- __Name__: The name of this specific face to recognise. (defaults to "Unknown")
 
-#### Using the Child_Process
+- __Add Images__: Use this button to add images to create a descriptors from. These descriptors will then be used in the input node to predict against an image. When adding images, the descriptors will take a while to compute.
 
-As stated the compute node can offload the calculations to a `child_process` to allow the Node-Red event loop to continue. In doing this, another instance of Node.js is spawned which takes a certain amount of resources. Due to this it may not be desirable to run the calculations in this child node. With the option available, you can choose how to run this node for your specific application.
+- __Remove Descriptors__: Use this button to remove the currently stored descriptors. This is irreversible.
 
-> On a windows environment, each child process take approx 85MB of ram. This should be similar for other platforms.
+## Adding a face descriptor
 
-> It should be noted that the child node does not speed up the calculation. It only unblocks the main thread
+In order to use the facial recognition, facial descriptors must be calculated first to allow a comparison between them and any input image. To do this, create a recognition node through the input node menu, then click `Add Images`. Once selected all images will be computed immediately in the background.
 
-#### The Recognition Metric 
+These descriptors are then saved to disk allowing it to survive restarts of Node-Red. The saved file will then be loaded on startup of Node-Red. Saving the descriptor is also safer than saving an image if your Node-Red instance is online as no data about the original image is stored.
+
+## The Recognition Metric
 
 The original Face-api.js library only supports the Euclidean distance method of comparison between descriptors when matching faces. To extend this, this node also supports 3 more type of metrics. These are; __Manhattan__, __Chebyshev__, and __Mean Squared Error__.
 
