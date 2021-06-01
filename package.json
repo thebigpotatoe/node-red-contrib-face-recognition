@@ -37,7 +37,11 @@
     "peerDependencies": {
         "@tensorflow/tfjs-node": "1.2.11"
     },
-    "files": ["app/**", "face-api.html", "face-api.js"],
+    "files": [
+        "app/**",
+        "face-api.html",
+        "face-api.js"
+    ],
     "main": "app/face-api.js",
     "node-red": {
         "nodes": {
