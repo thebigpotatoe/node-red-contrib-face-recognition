@@ -54,7 +54,6 @@ module.exports = function (RED) {
             .then((code) => {
                 RED.log.info("Successfully deleted descriptors for " + req.params.id);
                 res.status(201).send('OK').end();
-                break;
             })
             .catch((err) => {
                 RED.log.error(err);
