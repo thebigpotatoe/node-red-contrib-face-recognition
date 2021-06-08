@@ -86,11 +86,11 @@ tfjs-node is unfortunatley not supported on all OS's and all architectures. Belo
 
 |OS                      | x86 | armv7 | arm64v8 |
 |------------------------|-----|-------|---------|
-|windows                 | yes | n/a   | n/a     |
-|mac                     | ?   | n/a   | n/a     |
-|linux                   | yes | no    | no      |
+|windows                 | yes | -     | -       |
+|mac                     | ?   | -     | ?       |
+|linux                   | yes | no    | yes     |
 |official docker image   | no  | no    | no      |
-|unofficial docker image | yes | no    | no      |
+|unofficial docker image | yes | no    | [yes!](https://github.com/thebigpotatoe/node-red-docker)    |
 
 ## Example Flow
 
