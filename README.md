@@ -1,5 +1,9 @@
 # node-red-contrib-face-recognition
 
+[![GitHub release](https://img.shields.io/npm/v/node-red-contrib-face-recognition)](https://www.npmjs.com/package/node-red-contrib-face-recognition)
+[![GitHub release](https://img.shields.io/npm/dw/node-red-contrib-face-recognition)](https://www.npmjs.com/package/node-red-contrib-face-recognition)
+[![GitHub release](https://img.shields.io/npm/l/node-red-contrib-face-recognition)](https://www.npmjs.com/package/node-red-contrib-face-recognition)
+
 ## Version 2 Out Now!
 
 Version 2.0.0 is now officially released brining performance increases, better useability, and more support across systems. Testing is still ongoing, so if you come across any bugs please open an issue or a discussion here.
